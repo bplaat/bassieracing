@@ -259,6 +259,9 @@ class Map:
         self.startY = height // 2
         self.startAngle = math.radians(270)
 
+        self.track[self.startY][self.startX] = 1
+        self.track[self.startY + 1][self.startX] = 1
+
     # Draw the map
     def draw(self, surface, camera):
         # Draw terrain tiles to surface
@@ -312,10 +315,10 @@ class Label:
     def handleEvent(self, event):
         # Handle mouse click events
         if (
+            self.clickCallback != None and
             event.type == pygame.MOUSEBUTTONUP and
             event.pos[0] >= self.x and event.pos[1] >= self.y and
-            event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height and
-            self.clickCallback != None
+            event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
         ):
             self.clickCallback()
 
@@ -350,7 +353,7 @@ class VehicleViewport:
         self.map = map
         self.vehicles = vehicles
         self.surface = pygame.Surface(( width, height ))
-        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Game.PIXELS_PER_METER * 3.6), 0, height - 24 - 24, width, 24, game.smallFont, Color.BLACK)
+        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Game.PIXELS_PER_METER * 3.6), 0, height - 24 - 24, width, 24, game.textFont, Color.BLACK)
 
     def set_size(self, width, height):
         self.width = width
@@ -416,7 +419,7 @@ class VehicleViewport:
             vehicle.draw(self.surface, camera)
 
         # Draw speed text
-        self.speedLabel.set_text('Speed: %3d km/h' % (self.vehicle.velocity / Game.PIXELS_PER_METER * 3.6))
+        self.speedLabel.set_text('Speed: %d km/h' % (self.vehicle.velocity / Game.PIXELS_PER_METER * 3.6))
         self.speedLabel.draw(self.surface)
 
         # Draw own surface to the screen
@@ -432,12 +435,26 @@ class VehicleSelector:
         self.height = height
         self.color = color
 
-        self.selectedVehicleIndex = 0
-        self.update_vehicle()
-
+        # Create vehicle selector widget widgets
         self.widgets = []
-        self.widgets.append(Button("<", x, y, 48, height, game.largeFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
-        self.widgets.append(Button(">", x + width - 48, y, 48, height, game.largeFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
+        self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
+        self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
+
+        ry = 196
+        self.nameLabel = Label('', x, y + ry, self.width, 48, game.textFont, Color.WHITE)
+        self.widgets.append(self.nameLabel)
+        ry += 48 + 16
+        self.maxForwardSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
+        self.widgets.append(self.maxForwardSpeed)
+        ry += 32 + 16
+        self.maxBackwardSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
+        self.widgets.append(self.maxBackwardSpeed)
+        ry += 32 + 16
+        self.turningSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
+        self.widgets.append(self.turningSpeed)
+
+        self.selectedVehicleIndex = random.randint(0, len(vehicles) - 1)
+        self.update_vehicle()
 
     # Update selected vehicle
     def update_vehicle(self):
@@ -449,6 +466,11 @@ class VehicleSelector:
             self.selectedVehicle['width'],
             self.selectedVehicle['height']
         ))
+
+        self.nameLabel.set_text(self.selectedVehicle['name'])
+        self.maxForwardSpeed.set_text('Max Forward Speed: %d km/h' % (self.selectedVehicle['maxForwardVelocity'] / Game.PIXELS_PER_METER * 3.6))
+        self.maxBackwardSpeed.set_text('Max Backward Speed: %d km/h' % (self.selectedVehicle['maxBackwardVelocity'] / Game.PIXELS_PER_METER * 3.6))
+        self.turningSpeed.set_text('Turing Speed: %d \u00B0/s' % math.degrees(self.selectedVehicle['turningSpeed']))
 
     # Handle rotate left button click
     def rotate_left_button_clicked(self):
@@ -476,15 +498,15 @@ class VehicleSelector:
 
     # Draw page
     def draw(self, surface):
-        # Draw widgets
-        for widget in self.widgets:
-            widget.draw(surface)
-
         # Draw vehicle image
         surface.blit(self.vehicleImage, (
             self.x + ((self.width - self.selectedVehicle['width']) // 2),
-            self.y + (((self.height - 128) - self.selectedVehicle['height']) // 2)
+            self.y + (((self.height - 256) - self.selectedVehicle['height']) // 2)
         ))
+
+        # Draw widgets
+        for widget in self.widgets:
+            widget.draw(surface)
 
 # The page class
 class Page:
@@ -520,23 +542,23 @@ class MenuPage(Page):
         Page.__init__(self, game)
 
         # Create menu page widgets
-        self.widgets.append(Label('v' + Game.VERSION, Game.WIDTH - 16 - 96, 16, 96, 32, game.smallFont, Color.WHITE, self.version_label_clicked))
+        self.widgets.append(Label('v' + Game.VERSION, Game.WIDTH - 16 - 96, 16, 96, 32, game.textFont, Color.WHITE, self.version_label_clicked))
         y = 32
-        self.widgets.append(Label('Bassie Racing', 0, y, Game.WIDTH, 96, game.largeFont, Color.WHITE))
+        self.widgets.append(Label('Bassie Racing', 0, y, Game.WIDTH, 96, game.titleFont, Color.WHITE))
         y += 96 + 16
-        self.widgets.append(Button('Create map to play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.create_map_to_play_button_clicked))
+        self.widgets.append(Button('Create map to play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.create_map_to_play_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Load map to play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.load_map_to_play_button_clicked))
+        self.widgets.append(Button('Load map to play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_map_to_play_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Create a map to edit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.create_map_to_edit_button_clicked))
+        self.widgets.append(Button('Create a map to edit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.create_map_to_edit_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Load a map to edit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.load_map_to_edit_button_clicked))
+        self.widgets.append(Button('Load a map to edit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_map_to_edit_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Help', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
+        self.widgets.append(Button('Help', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Exit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
+        self.widgets.append(Button('Exit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
         y += 64 + 16
-        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, y, Game.WIDTH, 96, game.smallFont, Color.WHITE, self.footer_label_clicked))
+        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, y, Game.WIDTH, 96, game.textFont, Color.WHITE, self.footer_label_clicked))
 
     # Version label clicked
     def version_label_clicked(self):
@@ -583,13 +605,13 @@ class SelectPage(Page):
         Page.__init__(self, game)
 
         # Create select page widgets
-        self.widgets.append(Label('Select both your vehicle', 0, 24, Game.WIDTH, 96, game.largeFont, Color.WHITE))
-        self.leftVehicleSelector = VehicleSelector(game, 16, 32 + 96 + 16, Game.WIDTH // 2 - (16 + 16), Game.HEIGHT - (32 + 96 + 16) - (32 + 64 + 16), 0)
+        self.widgets.append(Label('Select both your vehicle', 0, 24, Game.WIDTH, 96, game.titleFont, Color.WHITE))
+        self.leftVehicleSelector = VehicleSelector(game, 16, 32 + 96 + 16, Game.WIDTH // 2 - (16 + 16), Game.HEIGHT - (32 + 96 + 16) - (48 + 64 + 16), 0)
         self.widgets.append(self.leftVehicleSelector)
-        self.rightVehicleSelector = VehicleSelector(game, 16 + Game.WIDTH // 2, 32 + 96 + 16, Game.WIDTH // 2 - (16 + 16), Game.HEIGHT - (32 + 96 + 16) - (32 + 64 + 16), 1)
+        self.rightVehicleSelector = VehicleSelector(game, 16 + Game.WIDTH // 2, 32 + 96 + 16, Game.WIDTH // 2 - (16 + 16), Game.HEIGHT - (32 + 96 + 16) - (48 + 64 + 16), 1)
         self.widgets.append(self.rightVehicleSelector)
-        self.widgets.append(Button('Back', 16, Game.HEIGHT - 64 - 16, 128, 64, game.smallFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
-        self.widgets.append(Button('Race', Game.WIDTH - 16 - 128, Game.HEIGHT - 64 - 16, 128, 64, game.smallFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
+        self.widgets.append(Button('Back', 16, Game.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('Race!', Game.WIDTH - 16 - 240, Game.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
 
     # Back button clicked
     def back_button_clicked(self):
@@ -628,7 +650,7 @@ class GamePage(Page):
         # Create game page widgets
         self.widgets.append(VehicleViewport(game, leftVehicle, 0, 0, Game.WIDTH // 2, Game.HEIGHT, self.map, self.vehicles))
         self.widgets.append(VehicleViewport(game, rightVehicle, Game.WIDTH // 2, 0, Game.WIDTH // 2, Game.HEIGHT, self.map, self.vehicles))
-        self.widgets.append(Button('Back', Game.WIDTH - 16 - 128, 16, 128, 64, game.smallFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('Back', Game.WIDTH - 16 - 128, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked
     def back_button_clicked(self):
@@ -647,8 +669,8 @@ class EditPage(Page):
         Page.__init__(self, game)
 
         # Create edit page widgets
-        self.widgets.append(Button('Save', Game.WIDTH - (16 + 128) * 2, 16, 128, 64, game.smallFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
-        self.widgets.append(Button('Back', Game.WIDTH - 16 - 128, 16, 128, 64, game.smallFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('Save', Game.WIDTH - (16 + 128) * 2, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
+        self.widgets.append(Button('Back', Game.WIDTH - 16 - 128, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Save button clicked
     def save_button_clicked(self):
@@ -668,19 +690,19 @@ class HelpPage(Page):
 
         # Create help page widgets
         y = 64
-        self.widgets.append(Label('Help', 0, y, Game.WIDTH, 96, game.largeFont, Color.WHITE))
+        self.widgets.append(Label('Help', 0, y, Game.WIDTH, 96, game.titleFont, Color.WHITE))
         y += 96 + 16
-        self.widgets.append(Label('Bassie Racing is a simple two player race game', 0, y, Game.WIDTH, 64, game.smallFont, Color.WHITE))
+        self.widgets.append(Label('Bassie Racing is a simple two player race game', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('You can control the left car by using WASD keys', 0, y, Game.WIDTH, 64, game.smallFont, Color.WHITE))
+        self.widgets.append(Label('You can control the left car by using WASD keys', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('You can control the right car by using the arrow keys', 0, y, Game.WIDTH, 64, game.smallFont, Color.WHITE))
+        self.widgets.append(Label('You can control the right car by using the arrow keys', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('You can also create or edit custom maps', 0, y, Game.WIDTH, 64, game.smallFont, Color.WHITE))
+        self.widgets.append(Label('You can also create or edit custom maps', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('And try to get better times when playing maps', 0, y, Game.WIDTH, 64, game.smallFont, Color.WHITE))
+        self.widgets.append(Label('And try to get better times when playing maps', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Button('Back', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.smallFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('Back', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked event
     def back_button_clicked(self):
@@ -689,7 +711,7 @@ class HelpPage(Page):
 # The game class
 class Game:
     # Window constants
-    VERSION = '0.2'
+    VERSION = '0.3'
     WIDTH = 1280
     HEIGHT = 720
     FPS = 60
@@ -710,8 +732,9 @@ class Game:
         self.running = True
 
         # Load fonts
-        self.largeFont = pygame.font.Font('PressStart2P-Regular.ttf', 48)
-        self.smallFont = pygame.font.Font('PressStart2P-Regular.ttf', 24)
+        self.titleFont = pygame.font.Font('PressStart2P-Regular.ttf', 48)
+        self.textFont = pygame.font.Font('PressStart2P-Regular.ttf', 24)
+        self.smallFont = pygame.font.Font('PressStart2P-Regular.ttf', 16)
 
         # Load textures
         self.tilesImage = pygame.image.load('tiles.png').convert_alpha()
