@@ -1,4 +1,4 @@
-# Bassie Racing - A cool 2D topdown racing game
+# Bassie Racing - A topdown 2D two player racing game
 # Made by Bastiaan van der Plaat (https://bastiaan.ml/)
 # GitHub repo: https://github.com/bplaat/bassieracing
 # Made with PyGame (but only used to plot images and text to the screen and to handle the window events)
@@ -154,6 +154,7 @@ trackTiles = [
 # The colors constants class
 class Color:
     BLACK = ( 0, 0, 0 )
+    LIGHT_GRAY = ( 225, 225, 225 )
     WHITE = ( 255, 255, 255 )
 
 # The vehicle class
@@ -297,7 +298,8 @@ class Map:
 
 # The label widget class
 class Label:
-    def __init__(self, text, x, y, width, height, font, color, clickCallback = None):
+    # Create label
+    def __init__(self, text, x, y, width, height, font, color, clickCallback = None, callbackExtra = None):
         self.text = text
         self.x = x
         self.y = y
@@ -307,11 +309,14 @@ class Label:
         self.color = color
         self.textSurface = font.render(text, True, color)
         self.clickCallback = clickCallback
+        self.callbackExtra = callbackExtra
 
+    # Update label text
     def set_text(self, text):
         self.text = text
         self.textSurface = self.font.render(self.text, True, self.color)
 
+    # Handle label events
     def handleEvent(self, event):
         # Handle mouse click events
         if (
@@ -320,8 +325,12 @@ class Label:
             event.pos[0] >= self.x and event.pos[1] >= self.y and
             event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
         ):
-            self.clickCallback()
+            if self.callbackExtra != None:
+                self.clickCallback(self.callbackExtra)
+            else:
+                self.clickCallback()
 
+    # Draw label
     def draw(self, surface):
         surface.blit(self.textSurface, (
             self.x + (self.width - self.textSurface.get_width()) // 2,
@@ -330,16 +339,82 @@ class Label:
 
 # The button widget class
 class Button(Label):
-    def __init__(self, text, x, y, width, height, font, color, backgroundColor, clickCallback = None):
-        Label.__init__(self, text, x, y, width, height, font, color, clickCallback)
+    # Create button
+    def __init__(self, text, x, y, width, height, font, color, backgroundColor, clickCallback = None, callbackExtra = None):
+        Label.__init__(self, text, x, y, width, height, font, color, clickCallback, callbackExtra)
         self.backgroundColor = backgroundColor
 
-    def handleEvent(self, event):
-        Label.handleEvent(self, event)
-
+    # Draw button
     def draw(self, surface):
         pygame.draw.rect(surface, self.backgroundColor, ( self.x, self.y, self.width, self.height ))
         Label.draw(self, surface)
+
+# The combobox widget class
+class ComboBox(Button):
+    # Create combobox
+    def __init__(self, options, selectedItem, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+        self.options = options
+        self.selectedItem = selectedItem
+        Button.__init__(self, options[self.selectedItem] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
+        self.blurBackgroundColor = backgroundColor
+        self.activeBackgroundColor = activeBackgroundColor
+        self.changedCallback = changedCallback
+        self.callbackExtra = callbackExtra
+        self.active = False
+
+        # Create combobox widgets
+        ry = y + height
+        if len(options) * height > Game.HEIGHT - (y + height):
+            ry = y - len(options) * height
+
+        self.widgets = []
+        for i in range(len(options)):
+            self.widgets.append(Button(options[i], x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
+            ry += height
+
+    # Root button clicked
+    def root_button_clicked(self):
+        # Toggle active
+        self.active = not self.active
+        if self.active:
+            self.backgroundColor = self.activeBackgroundColor
+        else:
+            self.backgroundColor = self.blurBackgroundColor
+
+    # Option button clicked
+    def option_button_clicked(self, optionIndex):
+        # Update root button
+        self.active = False
+        self.backgroundColor = self.blurBackgroundColor
+        self.selectedItem = optionIndex
+        self.set_text(self.options[self.selectedItem] + ' \u25BC')
+
+        # Call callback
+        if self.changedCallback != None:
+            if self.callbackExtra != None:
+                self.changedCallback(self.callbackExtra)
+            else:
+                self.changedCallback()
+
+    # Handle combobox events
+    def handleEvent(self, event):
+        # Handle root button events
+        Button.handleEvent(self, event)
+
+        # If active handle widget events
+        if self.active:
+            for widget in self.widgets:
+                widget.handleEvent(event)
+
+    # Draw combobox
+    def draw(self, surface):
+        # Draw root button
+        Button.draw(self, surface)
+
+        # If active draw widgets
+        if self.active:
+            for widget in self.widgets:
+                widget.draw(surface)
 
 # The vehicle viewport widget class
 class VehicleViewport:
@@ -353,12 +428,11 @@ class VehicleViewport:
         self.map = map
         self.vehicles = vehicles
         self.surface = pygame.Surface(( width, height ))
-        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Game.PIXELS_PER_METER * 3.6), 0, height - 24 - 24, width, 24, game.textFont, Color.BLACK)
 
-    def set_size(self, width, height):
-        self.width = width
-        self.height = height
-        self.surface = pygame.Surface(( width, height ))
+        # Create vehicle viewport widgets
+        self.widgets = []
+        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Game.PIXELS_PER_METER * 3.6), 0, height - 24 - 24, width, 24, game.textFont, Color.BLACK)
+        self.widgets.append(self.speedLabel)
 
     def handleEvent(self, event):
         # Handle keydown events
@@ -418,9 +492,12 @@ class VehicleViewport:
         for vehicle in self.vehicles:
             vehicle.draw(self.surface, camera)
 
-        # Draw speed text
+        # Update speed label
         self.speedLabel.set_text('Speed: %d km/h' % (self.vehicle.velocity / Game.PIXELS_PER_METER * 3.6))
-        self.speedLabel.draw(self.surface)
+
+        # Draw widgets
+        for widget in self.widgets:
+            widget.draw(self.surface)
 
         # Draw own surface to the screen
         surface.blit(self.surface, ( self.x, self.y ))
@@ -543,48 +620,29 @@ class MenuPage(Page):
 
         # Create menu page widgets
         self.widgets.append(Label('v' + Game.VERSION, Game.WIDTH - 16 - 96, 16, 96, 32, game.textFont, Color.WHITE, self.version_label_clicked))
-        y = 32
+        y = 128
         self.widgets.append(Label('Bassie Racing', 0, y, Game.WIDTH, 96, game.titleFont, Color.WHITE))
         y += 96 + 16
-        self.widgets.append(Button('Create map to play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.create_map_to_play_button_clicked))
+        self.widgets.append(Button('Play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.play_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Load map to play', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_map_to_play_button_clicked))
-        y += 64 + 16
-        self.widgets.append(Button('Create a map to edit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.create_map_to_edit_button_clicked))
-        y += 64 + 16
-        self.widgets.append(Button('Load a map to edit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_map_to_edit_button_clicked))
+        self.widgets.append(Button('Map Editor', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.edit_button_clicked))
         y += 64 + 16
         self.widgets.append(Button('Help', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
         y += 64 + 16
         self.widgets.append(Button('Exit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
-        y += 64 + 16
-        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, y, Game.WIDTH, 96, game.textFont, Color.WHITE, self.footer_label_clicked))
+        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, Game.HEIGHT - 64 - 16, Game.WIDTH, 64, game.textFont, Color.WHITE, self.footer_label_clicked))
 
     # Version label clicked
     def version_label_clicked(self):
         webbrowser.open_new('https://github.com/bplaat/bassieracing')
 
-    # Create map to play button
-    def create_map_to_play_button_clicked(self):
-        self.game.page = SelectPage(self.game)
+    # Play button clicked
+    def play_button_clicked(self):
+        self.game.page = SelectMapPage(self.game)
 
-    # Load map to play button clicked
-    def load_map_to_play_button_clicked(self):
-        filename = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
-        if filename != '':
-            print('Open file: ' + filename)
-            self.game.page = SelectPage(self.game)
-
-    # Create map to edit button
-    def create_map_to_edit_button_clicked(self):
-        self.game.page = EditPage(self.game)
-
-    # Load map to edit button clicked
-    def load_map_to_edit_button_clicked(self):
-        filename = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
-        if filename != '':
-            print('Open file: ' + filename)
-            self.game.page = EditPage(self.game)
+    # Edit button clicked
+    def edit_button_clicked(self):
+        self.game.page = EditorPage(self.game)
 
      # Help button clicked
     def help_button_clicked(self):
@@ -598,13 +656,33 @@ class MenuPage(Page):
     def footer_label_clicked(self):
         webbrowser.open_new('https://bastiaan.ml/')
 
-# The select page class
-class SelectPage(Page):
-    # Create select page
+# The select map page class
+class SelectMapPage(Page):
+    # Create select map page
     def __init__(self, game):
         Page.__init__(self, game)
 
-        # Create select page widgets
+        # Create select map page widgets
+        self.widgets.append(Label('Select a map to race', 0, 24, Game.WIDTH, 96, game.titleFont, Color.WHITE))
+        self.widgets.append(Label('Comming soon...', 0, 0, Game.WIDTH, Game.HEIGHT, game.textFont, Color.WHITE))
+        self.widgets.append(Button('Back', 16, Game.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('Continue', Game.WIDTH - 16 - 240, Game.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
+
+    # Back button clicked
+    def back_button_clicked(self):
+        self.game.page = MenuPage(self.game)
+
+    # Continue button clicked
+    def continue_button_clicked(self):
+        self.game.page = SelectVehiclePage(self.game)
+
+# The select vehicle page class
+class SelectVehiclePage(Page):
+    # Create select vehicle page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+        # Create select vehicle page widgets
         self.widgets.append(Label('Select both your vehicle', 0, 24, Game.WIDTH, 96, game.titleFont, Color.WHITE))
         self.leftVehicleSelector = VehicleSelector(game, 16, 32 + 96 + 16, Game.WIDTH // 2 - (16 + 16), Game.HEIGHT - (32 + 96 + 16) - (48 + 64 + 16), 0)
         self.widgets.append(self.leftVehicleSelector)
@@ -615,7 +693,7 @@ class SelectPage(Page):
 
     # Back button clicked
     def back_button_clicked(self):
-        self.game.page = MenuPage(self.game)
+        self.game.page = SelectMapPage(self.game)
 
     # Race button clicked
     def race_button_clicked(self):
@@ -663,14 +741,38 @@ class GamePage(Page):
             vehicle.update(delta)
 
 # The edit page class
-class EditPage(Page):
+class EditorPage(Page):
     # Create edit page
     def __init__(self, game):
         Page.__init__(self, game)
 
         # Create edit page widgets
-        self.widgets.append(Button('Save', Game.WIDTH - (16 + 128) * 2, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
-        self.widgets.append(Button('Back', Game.WIDTH - 16 - 128, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('New', 16, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
+        self.widgets.append(Button('Load', 16 + (128 + 16), 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
+        self.widgets.append(Button('Save', 16 + (128 + 16) * 2, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
+        self.widgets.append(Button('Back', Game.WIDTH - (16 + 128), 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.sizeComboBox = ComboBox([ 'Small size (16x16)', 'Medium size (24x24)', 'Large size (32x32)', 'Gaint size (48x48)' ], 1, 16, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
+        self.widgets.append(self.sizeComboBox)
+        self.burshComboBox = ComboBox([ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ], 3, Game.WIDTH // 2 + 8, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
+        self.widgets.append(self.burshComboBox)
+
+    # Size combobox changed
+    def size_combobox_changed(self):
+        pass
+
+    # Brush combobox changed
+    def brush_combobox_changed(self):
+        pass
+
+    # New button clicked
+    def new_button_clicked(self):
+        pass
+
+    # Load button clicked
+    def load_button_clicked(self):
+        filename = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
+        if filename != '':
+            print('Open file: ' + filename)
 
     # Save button clicked
     def save_button_clicked(self):
@@ -692,16 +794,16 @@ class HelpPage(Page):
         y = 64
         self.widgets.append(Label('Help', 0, y, Game.WIDTH, 96, game.titleFont, Color.WHITE))
         y += 96 + 16
-        self.widgets.append(Label('Bassie Racing is a simple two player race game', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
+        self.widgets.append(Label('Bassie Racing is a topdown 2D two player racing game', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
         self.widgets.append(Label('You can control the left car by using WASD keys', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
         self.widgets.append(Label('You can control the right car by using the arrow keys', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
         y += 64 + 16
+        self.widgets.append(Label('There are multiple maps and vehicles that you can try', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
+        y += 64 + 16
         self.widgets.append(Label('You can also create or edit custom maps', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
-        y += 64 + 16
-        self.widgets.append(Label('And try to get better times when playing maps', 0, y, Game.WIDTH, 64, game.textFont, Color.WHITE))
-        y += 64 + 16
+        y += 64 + 32
         self.widgets.append(Button('Back', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked event

@@ -1,2 +1,2 @@
 # bplaat/bassieracing
-A cool 2D topdown racing game
+A topdown 2D two player racing game
