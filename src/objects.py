@@ -129,13 +129,7 @@ class Map:
         self.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
         for y in range(height):
             for x in range(width):
-                n = self.noise.noise((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
-                if n > 0.2:
-                    self.terrain[y][x] = 2
-                elif n > 0.075:
-                    self.terrain[y][x] = 1
-                else:
-                    self.terrain[y][x] = 0
+                self.terrain[y][x] = self.generate_terrain_tile(x, y)
 
         self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
         self.track[self.startY][self.startX] = 2
@@ -144,11 +138,15 @@ class Map:
     # Create map by loading a JSON string
     @staticmethod
     def load_from_string(tilesImage, jsonString):
-        data = json.loads(jsonString)
+        try:
+            data = json.loads(jsonString)
+        except:
+            tkinter.messagebox.showinfo('Corrupt JSON file!', 'This JSON file is corrupt\nYou can try to fix it with JSONLint (https://jsonlint.com/)')
+            return
 
         if  'type' not in data or data['type'] != 'BassieRacing Map':
             tkinter.messagebox.showinfo('Not a BassieRacing map!', 'This JSON file is not a BassieRacing Map')
-            return None
+            return
 
         if data['version'] != Config.VERSION:
             tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur\n\nFile version: ' + data['version'] + '\nGame version: ' + Config.VERSION)
@@ -172,6 +170,15 @@ class Map:
     def load_from_file(tilesImage, file_path):
         with open(file_path, 'r') as file:
             return Map.load_from_string(tilesImage, file.read())
+
+    # Generate terrain tile
+    def generate_terrain_tile(self, x, y):
+        n = self.noise.noise((x + (self.noiseX - self.width // 2)) / 20, (y + (self.noiseY - self.height // 2)) / 20, 2)
+        if n > 0.2:
+            return 2
+        if n > 0.075:
+            return 1
+        return 0
 
     # Save map to file
     def save_to_file(self, file_path):
@@ -202,35 +209,52 @@ class Map:
 
     # Resize map
     def resize(self, width, height):
-        dw = (width - self.width) / 2
-        dh = (height - self.height) / 2
-
-        # TODO
-
-        terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
-        for y in range(height):
-            for x in range(width):
-                n = self.noise.noise((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
-                if n > 0.2:
-                    terrain[y][x] = 2
-                elif n > 0.075:
-                    terrain[y][x] = 1
-                else:
-                    terrain[y][x] = 0
-
-        track = [ [ 0 for x in range(width) ] for y in range(height) ]
-
-        self.startX = width // 2
-        self.startY = height // 2
-        self.startAngle = math.radians(270)
-
-        track[self.startY][self.startX] = 2
-        track[self.startY + 1][self.startX] = 2
+        old_width = self.width
+        old_height = self.height
+        old_terrain = self.terrain
+        old_track = self.track
 
         self.width = width
         self.height = height
-        self.terrain = terrain
-        self.track = track
+        dw = (width - old_width) // 2
+        dh = (height - old_height) // 2
+
+        # Extend map
+        if dw > 0:
+            self.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
+            for y in range(height):
+                for x in range(width):
+                    if x - dw >= 0 and y - dh >= 0 and x - dw < old_width and y - dh < old_height:
+                        self.terrain[y][x] = old_terrain[y - dh][x - dw]
+                    else:
+                        self.terrain[y][x] = self.generate_terrain_tile(x, y)
+
+            self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
+            for y in range(height):
+                for x in range(width):
+                    if x - dw >= 0 and y - dh >= 0 and x - dw < old_width and y - dh < old_height:
+                        self.track[y][x] = old_track[y - dh][x - dw]
+
+            self.startX += dw
+            self.startY += dh
+
+        # Crop map
+        else:
+            dw = abs(dw)
+            dh = abs(dh)
+
+            self.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
+            for y in range(height):
+                for x in range(width):
+                    self.terrain[y][x] = old_terrain[dh + y][dw + x]
+
+            self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
+            for y in range(height):
+                for x in range(width):
+                    self.track[y][x] = old_track[dh + y][dw + x]
+
+            self.startX -= dw
+            self.startY -= dh
 
     # Set tile size
     def set_tile_size(self, tileSize):

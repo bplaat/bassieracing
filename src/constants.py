@@ -18,7 +18,7 @@ class Config:
     # Editor constants
     EDITOR_CAMERA_BORDER = 12
     EDITOR_TILE_SIZE = 32
-    MAP_SIZES = [ 24, 32, 48, 56 ]
+    MAP_SIZES = [ 24, 32, 48, 64 ]
     MAP_SIZE_LABELS = [ 'Small', 'Medium', 'Large', 'Giant' ]
 
 # The colors constants class

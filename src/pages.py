@@ -180,7 +180,7 @@ class GamePage(Page):
         Page.__init__(self, game)
 
         # Init the map
-        self.map = Map.load_from_file(game.tilesImage, 'assets/maps/map.json')
+        self.map = Map.load_from_file(game.tilesImage, 'assets/maps/classic-eight.json')
 
         # Init the vehicles
         self.vehicles = []
@@ -261,16 +261,17 @@ class EditorPage(Page):
         file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path != '':
             self.map = Map.load_from_file(self.game.tilesImage, file_path)
-            self.mapEditor.set_map(self.map)
-            self.mapEditor.center_camera()
+            if self.map != None:
+                self.mapEditor.set_map(self.map)
+                self.mapEditor.center_camera()
 
-            for i in range(len(Config.MAP_SIZES)):
-                if Config.MAP_SIZES[i] == self.map.width:
-                    self.sizeComboBox.set_selected(i)
-                    return
+                for i in range(len(Config.MAP_SIZES)):
+                    if Config.MAP_SIZES[i] == self.map.width:
+                        self.sizeComboBox.set_selected(i)
+                        return
 
-            self.sizeComboBox.selectedItem = len(self.sizeComboBox.options)
-            self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
+                self.sizeComboBox.selectedItem = len(self.sizeComboBox.options)
+                self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
 
     # Save button clicked
     def save_button_clicked(self):
