@@ -2,15 +2,17 @@
 # Made by Bastiaan van der Plaat (https://bastiaan.ml/)
 # GitHub repo: https://github.com/bplaat/bassieracing
 # Made with PyGame (but only used to plot images and text to the screen and to handle the window events)
-# It also uses tkinter for the file open and save dialogs
+# It also uses tkinter for the file open and save dialogs and error messages
 # And a noise library for random terrain generation
 
+import json
 import noise
 import math
 import pygame
 import time
 import tkinter
 import tkinter.filedialog
+import tkinter.messagebox
 import random
 import webbrowser
 
@@ -154,8 +156,30 @@ trackTiles = [
 # The colors constants class
 class Color:
     BLACK = ( 0, 0, 0 )
+    DARK = ( 25, 25, 25 )
     LIGHT_GRAY = ( 225, 225, 225 )
     WHITE = ( 255, 255, 255 )
+
+# The camera class
+class Camera:
+    def __init__(self, x = 0, y = 0):
+        self.x = x
+        self.y = y
+        self.speed = 400
+        self.movingUp = False
+        self.movingDown = False
+        self.movingLeft = False
+        self.movingRight = False
+
+    def update(self, delta):
+        if self.movingUp:
+            self.y -= self.speed * delta
+        if self.movingDown:
+            self.y += self.speed * delta
+        if self.movingLeft:
+            self.x -= self.speed * delta
+        if self.movingRight:
+            self.x += self.speed * delta
 
 # The vehicle class
 class Vehicle:
@@ -224,8 +248,8 @@ class Vehicle:
     def draw(self, surface, camera):
         # Rotate vehicle and draw
         rotatedVehicleImage = pygame.transform.rotate(self.vehicleImage, math.degrees(self.angle))
-        x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera['x'] - surface.get_width() // 2))
-        y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera['y'] - surface.get_height() // 2))
+        x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() // 2))
+        y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() // 2))
         if (
             x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
             x - rotatedVehicleImage.get_width() < surface.get_width() and y - rotatedVehicleImage.get_height() < surface.get_height()
@@ -235,18 +259,25 @@ class Vehicle:
 # The map class
 class Map:
     def __init__(self, tilesImage, width, height):
+        self.tileSize = Game.TILE_SPRITE_SIZE
+        self.originalTilesImage = tilesImage
         self.tilesImage = tilesImage
 
         self.width = width
         self.height = height
 
         # Generate terrain
+        self.noiseX = random.randint(-1000000, 1000000)
+        self.noiseY = random.randint(-1000000, 1000000)
+
+        self.startX = width // 2
+        self.startY = height // 2
+        self.startAngle = math.radians(270)
+
         self.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
-        tx = random.randint(-10000, 10000)
-        ty = random.randint(-10000, 10000)
         for y in range(height):
             for x in range(width):
-                n = noise.pnoise2(x / 20 + tx, y / 20 + ty, 2)
+                n = noise.pnoise2((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
                 if n > 0.2:
                     self.terrain[y][x] = 2
                 elif n > 0.075:
@@ -255,13 +286,96 @@ class Map:
                     self.terrain[y][x] = 0
 
         self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
+        self.track[self.startY][self.startX] = 1
+        self.track[self.startY + 1][self.startX] = 1
+
+    # Create map by loading a file
+    @staticmethod
+    def load_from_file(tilesImage, path):
+        with open(path, 'r') as file:
+            data = json.load(file)
+
+            if  'type' not in data or data['type'] != 'Bassie Racing Map':
+                tkinter.messagebox.showinfo('Not a Bassie Racing map!', 'This JSON file is not a Bassie Racing Map')
+                return Map(tilesImage, 32, 32)
+
+            if data['version'] != Game.VERSION:
+                tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur')
+
+            map = Map(tilesImage, data['width'], data['height'])
+
+            map.noiseX = data['noise']['x']
+            map.noiseY = data['noise']['y']
+
+            map.startX = data['start']['x']
+            map.startY = data['start']['y']
+            map.startAngle = math.radians(data['start']['angle'])
+
+            map.terrain = data['terrain']
+            map.track = data['track']
+
+            return map
+
+    # Save map to file
+    def save_to_file(self, path):
+        with open(path, 'w') as file:
+            data = {
+                'type': 'Bassie Racing Map',
+                'version': Game.VERSION,
+
+                'width': self.width,
+                'height': self.height,
+
+                'noise': {
+                    'x': self.noiseX,
+                    'y': self.noiseY
+                },
+
+                'start': {
+                    'x': self.startX,
+                    'y': self.startY,
+                    'angle': math.degrees(self.startAngle)
+                },
+
+                'terrain': self.terrain,
+                'track': self.track
+            }
+            json.dump(data, file, separators=(',', ':'))
+
+    # Resize map
+    def resize(self, width, height):
+        terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
+        for y in range(height):
+            for x in range(width):
+                n = noise.pnoise2((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
+                if n > 0.2:
+                    terrain[y][x] = 2
+                elif n > 0.075:
+                    terrain[y][x] = 1
+                else:
+                    terrain[y][x] = 0
+
+        track = [ [ 0 for x in range(width) ] for y in range(height) ]
 
         self.startX = width // 2
         self.startY = height // 2
         self.startAngle = math.radians(270)
 
-        self.track[self.startY][self.startX] = 1
-        self.track[self.startY + 1][self.startX] = 1
+        track[self.startY][self.startX] = 1
+        track[self.startY + 1][self.startX] = 1
+
+        self.width = width
+        self.height = height
+        self.terrain = terrain
+        self.track = track
+
+    # Set tile size
+    def set_tile_size(self, tileSize):
+        self.tileSize = tileSize
+        self.tilesImage = pygame.transform.scale(self.originalTilesImage, (
+            math.floor(self.originalTilesImage.get_width() * (tileSize / Game.TILE_SPRITE_SIZE)),
+            math.floor(self.originalTilesImage.get_height() * (tileSize / Game.TILE_SPRITE_SIZE))
+        ))
 
     # Draw the map
     def draw(self, surface, camera):
@@ -269,13 +383,18 @@ class Map:
         for y in range(self.height):
             for x in range(self.width):
                 tileType = terrainTiles[self.terrain[y][x]]
-                tx = math.floor(x * Game.TILE_SPRITE_SIZE - (camera['x'] - surface.get_width() / 2))
-                ty = math.floor(y *  Game.TILE_SPRITE_SIZE - (camera['y'] - surface.get_height() / 2))
-                if tx + Game.TILE_SPRITE_SIZE >= 0 and ty + Game.TILE_SPRITE_SIZE >= 0 and tx < surface.get_width() and ty < surface.get_height():
+                tx = math.floor(x * self.tileSize - (camera.x - surface.get_width() / 2))
+                ty = math.floor(y *  self.tileSize - (camera.y - surface.get_height() / 2))
+                if tx + self.tileSize >= 0 and ty + self.tileSize >= 0 and tx < surface.get_width() and ty < surface.get_height():
                     surface.blit(
                         self.tilesImage,
-                        ( tx, ty, Game.TILE_SPRITE_SIZE, Game.TILE_SPRITE_SIZE ),
-                        ( tileType['x'], tileType['y'], Game.TILE_SPRITE_SIZE, Game.TILE_SPRITE_SIZE )
+                        ( tx, ty, self.tileSize, self.tileSize ),
+                        (
+                            math.floor(tileType['x'] * (self.tileSize / Game.TILE_SPRITE_SIZE)),
+                            math.floor(tileType['y'] * (self.tileSize / Game.TILE_SPRITE_SIZE)),
+                            self.tileSize,
+                            self.tileSize
+                        )
                     )
 
         # Draw track tiles to surface
@@ -284,16 +403,21 @@ class Map:
                 trackId = self.track[y][x]
                 if trackId != 0:
                     tileType = trackTiles[trackId]
-                    tx = math.floor(x * Game.TILE_SPRITE_SIZE - (camera['x'] - surface.get_width() / 2))
-                    ty = math.floor(y *  Game.TILE_SPRITE_SIZE - (camera['y'] - surface.get_height() / 2))
+                    tx = math.floor(x * self.tileSize - (camera.x - surface.get_width() / 2))
+                    ty = math.floor(y *  self.tileSize - (camera.y - surface.get_height() / 2))
                     if (
-                        tx + Game.TILE_SPRITE_SIZE >= 0 and ty + Game.TILE_SPRITE_SIZE >= 0 and
+                        tx + self.tileSize >= 0 and ty + self.tileSize >= 0 and
                         tx < surface.get_width() and ty < surface.get_height()
                     ):
                         surface.blit(
                             self.tilesImage,
-                            ( tx, ty, Game.TILE_SPRITE_SIZE, Game.TILE_SPRITE_SIZE ),
-                            ( tileType['x'], tileType['y'], Game.TILE_SPRITE_SIZE, Game.TILE_SPRITE_SIZE )
+                            ( tx, ty, self.tileSize, self.tileSize ),
+                            (
+                                math.floor(tileType['x'] * (self.tileSize / Game.TILE_SPRITE_SIZE)),
+                                math.floor(tileType['y'] * (self.tileSize / Game.TILE_SPRITE_SIZE)),
+                                self.tileSize,
+                                self.tileSize
+                            )
                         )
 
 # The label widget class
@@ -392,9 +516,9 @@ class ComboBox(Button):
         # Call callback
         if self.changedCallback != None:
             if self.callbackExtra != None:
-                self.changedCallback(self.callbackExtra)
+                self.changedCallback(self.selectedItem, self.callbackExtra)
             else:
-                self.changedCallback()
+                self.changedCallback(self.selectedItem)
 
     # Handle combobox events
     def handleEvent(self, event):
@@ -477,18 +601,15 @@ class VehicleViewport:
 
     def draw(self, surface):
         # Clear the surface
-        self.surface.fill(( 25, 25, 25 ))
+        self.surface.fill(Color.DARK)
 
-        # Create camera object
-        camera = {
-            'x': self.vehicle.x,
-            'y': self.vehicle.y
-        }
+        # Create camera
+        camera = Camera(self.vehicle.x, self.vehicle.y)
 
-        # Draw the map to left surfface
+        # Draw the map to surface
         self.map.draw(self.surface, camera)
 
-        # Draw all the vehicles to left surfface
+        # Draw all the vehicles to surface
         for vehicle in self.vehicles:
             vehicle.draw(self.surface, camera)
 
@@ -585,6 +706,64 @@ class VehicleSelector:
         for widget in self.widgets:
             widget.draw(surface)
 
+# The map editor widget class
+class MapEditor:
+    # Create map editor
+    def __init__(self, game, map, x, y, width, height):
+        self.game = game
+        self.map = map
+        map.set_tile_size(Game.EDITOR_TILE_SIZE)
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.camera = Camera()
+        self.center_camera()
+
+    # Center camera
+    def center_camera(self):
+        self.camera.x = self.map.startX * Game.EDITOR_TILE_SIZE + Game.EDITOR_TILE_SIZE / 2
+        self.camera.y = self.map.startY * Game.EDITOR_TILE_SIZE + Game.EDITOR_TILE_SIZE / 2
+
+    # Handle page events
+    def handleEvent(self, event):
+        # Handle keydown events
+        if event.type == pygame.KEYDOWN:
+            # Handle camera movement
+            if event.key == pygame.K_w or event.key == pygame.K_UP:
+                self.camera.movingUp = True
+            if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                self.camera.movingDown = True
+            if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                self.camera.movingLeft = True
+            if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                self.camera.movingRight = True
+
+        # Handle keyup events
+        if event.type == pygame.KEYUP:
+            # Handle camera movement
+            if event.key == pygame.K_w or event.key == pygame.K_UP:
+                self.camera.movingUp = False
+            if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                self.camera.movingDown = False
+            if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                self.camera.movingLeft = False
+            if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                self.camera.movingRight = False
+
+    # Update map editor
+    def update(self, delta):
+        # Update camera
+        self.camera.update(delta)
+
+    # Draw map editor
+    def draw(self, surface):
+        # Draw background
+        surface.fill(Color.DARK)
+
+        # Draw the map
+        self.map.draw(surface, self.camera)
+
 # The page class
 class Page:
     # Create empty page
@@ -602,6 +781,10 @@ class Page:
         # Send all events to the widgets
         for widget in self.widgets:
             widget.handleEvent(event)
+
+    # Update page
+    def update(self, delta):
+        pass
 
     # Draw page
     def draw(self, surface):
@@ -746,43 +929,61 @@ class EditorPage(Page):
     def __init__(self, game):
         Page.__init__(self, game)
 
+        self.map = Map(game.tilesImage, 32, 32)
+
         # Create edit page widgets
+        self.mapEditor = MapEditor(game, self.map, 0, 0, Game.WIDTH, Game.HEIGHT)
+        self.widgets.append(self.mapEditor)
+
         self.widgets.append(Button('New', 16, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
         self.widgets.append(Button('Load', 16 + (128 + 16), 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
         self.widgets.append(Button('Save', 16 + (128 + 16) * 2, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
+
         self.widgets.append(Button('Back', Game.WIDTH - (16 + 128), 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
-        self.sizeComboBox = ComboBox([ 'Small size (16x16)', 'Medium size (24x24)', 'Large size (32x32)', 'Gaint size (48x48)' ], 1, 16, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
+
+        self.sizeComboBox = ComboBox([ '%s (%dx%d)' % (Game.MAP_SIZE_LABELS[i], Game.MAP_SIZES[i], Game.MAP_SIZES[i]) for i in range(len(Game.MAP_SIZES)) ], 1, 16, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
         self.widgets.append(self.sizeComboBox)
-        self.burshComboBox = ComboBox([ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ], 3, Game.WIDTH // 2 + 8, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
-        self.widgets.append(self.burshComboBox)
+        self.brushComboBox = ComboBox([ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ], 3, Game.WIDTH // 2 + 8, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
+        self.widgets.append(self.brushComboBox)
 
-    # Size combobox changed
-    def size_combobox_changed(self):
-        pass
-
-    # Brush combobox changed
-    def brush_combobox_changed(self):
-        pass
+    # Update map editor
+    def update(self, delta):
+        self.mapEditor.update(delta)
 
     # New button clicked
     def new_button_clicked(self):
-        pass
+        for i in range(len(Game.MAP_SIZES)):
+            if self.sizeComboBox.selectedItem == 0:
+                self.map = Map(self.game.tilesImage, Game.MAP_SIZES[i], Game.MAP_SIZES[i])
+        self.mapEditor.center_camera()
 
     # Load button clicked
     def load_button_clicked(self):
-        filename = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
-        if filename != '':
-            print('Open file: ' + filename)
+        path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
+        if path != '':
+            self.map = Map.load_from_file(self.game.tilesImage, path)
+            self.mapEditor.center_camera()
 
     # Save button clicked
     def save_button_clicked(self):
-        filename = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
-        if filename != '':
-            print('Save file to: ' + filename)
+        path = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
+        if path != '':
+            self.map.save_to_file(path)
 
     # Back button clicked
     def back_button_clicked(self):
         self.game.page = MenuPage(self.game)
+
+    # Size combobox changed
+    def size_combobox_changed(self, selectedItem):
+        for i in range(len(Game.MAP_SIZES)):
+            if selectedItem == i:
+                self.map.resize(Game.MAP_SIZES[i], Game.MAP_SIZES[i])
+        self.mapEditor.center_camera()
+
+    # Brush combobox changed
+    def brush_combobox_changed(self, selectedItem):
+        pass
 
 # The help page class
 class HelpPage(Page):
@@ -820,7 +1021,10 @@ class Game:
 
     # Game constants
     TILE_SPRITE_SIZE = 128
+    EDITOR_TILE_SIZE = 32
     PIXELS_PER_METER = 18
+    MAP_SIZES = [ 24, 32, 48, 56 ]
+    MAP_SIZE_LABELS = [ 'Small', 'Medium', 'Large', 'Giant' ]
 
     def __init__(self):
         # Init pygame
@@ -845,7 +1049,7 @@ class Game:
         # Create pages
         self.page = MenuPage(self)
 
-        # Hidden Tkinter window for file dialogs
+        # Hidden Tkinter window for file dialogs and error messages
         self.tkinter_window = tkinter.Tk()
         self.tkinter_window.withdraw()
 
@@ -858,15 +1062,12 @@ class Game:
         if event.type == pygame.QUIT:
             self.running = False
 
-    # Update all the game objects
+    # Update the current page
     def update(self, delta):
-        # When on game page update objects
-        if isinstance(self.page, GamePage):
-            self.page.update(delta)
+        self.page.update(delta)
 
-    # Draw all the game objects
+    # Draw the current page
     def draw(self):
-        # Draw the current page
         self.page.draw(self.screen)
 
     # The game loop
