@@ -150,6 +150,12 @@ trackTiles = [
         'name': 'Asphalt',
         'x': 512,
         'y': 1280
+    },
+    {
+        'id': 1,
+        'name': 'Finish',
+        'x': 0,
+        'y': 2048
     }
 ]
 
@@ -258,11 +264,12 @@ class Vehicle:
 
 # The map class
 class Map:
-    def __init__(self, tilesImage, width, height):
+    def __init__(self, tilesImage, name, width, height):
         self.tileSize = Game.TILE_SPRITE_SIZE
         self.originalTilesImage = tilesImage
         self.tilesImage = tilesImage
 
+        self.name = name
         self.width = width
         self.height = height
 
@@ -286,35 +293,40 @@ class Map:
                     self.terrain[y][x] = 0
 
         self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
-        self.track[self.startY][self.startX] = 1
-        self.track[self.startY + 1][self.startX] = 1
+        self.track[self.startY][self.startX] = 2
+        self.track[self.startY + 1][self.startX] = 2
+
+    # Create map by loading a JSON string
+    @staticmethod
+    def load_from_string(tilesImage, jsonString):
+        data = json.loads(jsonString)
+
+        if  'type' not in data or data['type'] != 'Bassie Racing Map':
+            tkinter.messagebox.showinfo('Not a Bassie Racing map!', 'This JSON file is not a Bassie Racing Map')
+            return None
+
+        if data['version'] != Game.VERSION:
+            tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur')
+
+        map = Map(tilesImage, data['name'], data['width'], data['height'])
+
+        map.noiseX = data['noise']['x']
+        map.noiseY = data['noise']['y']
+
+        map.startX = data['start']['x']
+        map.startY = data['start']['y']
+        map.startAngle = math.radians(data['start']['angle'])
+
+        map.terrain = data['terrain']
+        map.track = data['track']
+
+        return map
 
     # Create map by loading a file
     @staticmethod
     def load_from_file(tilesImage, path):
         with open(path, 'r') as file:
-            data = json.load(file)
-
-            if  'type' not in data or data['type'] != 'Bassie Racing Map':
-                tkinter.messagebox.showinfo('Not a Bassie Racing map!', 'This JSON file is not a Bassie Racing Map')
-                return Map(tilesImage, 32, 32)
-
-            if data['version'] != Game.VERSION:
-                tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur')
-
-            map = Map(tilesImage, data['width'], data['height'])
-
-            map.noiseX = data['noise']['x']
-            map.noiseY = data['noise']['y']
-
-            map.startX = data['start']['x']
-            map.startY = data['start']['y']
-            map.startAngle = math.radians(data['start']['angle'])
-
-            map.terrain = data['terrain']
-            map.track = data['track']
-
-            return map
+            return Map.load_from_string(tilesImage, file.read())
 
     # Save map to file
     def save_to_file(self, path):
@@ -323,6 +335,7 @@ class Map:
                 'type': 'Bassie Racing Map',
                 'version': Game.VERSION,
 
+                'name': self.name,
                 'width': self.width,
                 'height': self.height,
 
@@ -344,6 +357,11 @@ class Map:
 
     # Resize map
     def resize(self, width, height):
+        dw = (width - self.width) / 2
+        dh = (height - self.height) / 2
+
+        # TODO
+
         terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
         for y in range(height):
             for x in range(width):
@@ -361,8 +379,8 @@ class Map:
         self.startY = height // 2
         self.startAngle = math.radians(270)
 
-        track[self.startY][self.startX] = 1
-        track[self.startY + 1][self.startX] = 1
+        track[self.startY][self.startX] = 2
+        track[self.startY + 1][self.startX] = 2
 
         self.width = width
         self.height = height
@@ -441,18 +459,22 @@ class Label:
         self.textSurface = self.font.render(self.text, True, self.color)
 
     # Handle label events
-    def handleEvent(self, event):
-        # Handle mouse click events
+    def handle_event(self, event):
+        # Handle mouse events
         if (
             self.clickCallback != None and
-            event.type == pygame.MOUSEBUTTONUP and
+            event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP) and
             event.pos[0] >= self.x and event.pos[1] >= self.y and
             event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
         ):
-            if self.callbackExtra != None:
-                self.clickCallback(self.callbackExtra)
-            else:
-                self.clickCallback()
+            if event.type == pygame.MOUSEBUTTONUP:
+                if self.callbackExtra != None:
+                    self.clickCallback(self.callbackExtra)
+                else:
+                    self.clickCallback()
+            return True
+
+        return False
 
     # Draw label
     def draw(self, surface):
@@ -496,6 +518,11 @@ class ComboBox(Button):
             self.widgets.append(Button(options[i], x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
             ry += height
 
+    # Set selected item
+    def set_selected(self, selectedItem):
+        self.selectedItem = selectedItem
+        self.set_text(self.options[self.selectedItem] + ' \u25BC')
+
     # Root button clicked
     def root_button_clicked(self):
         # Toggle active
@@ -510,8 +537,7 @@ class ComboBox(Button):
         # Update root button
         self.active = False
         self.backgroundColor = self.blurBackgroundColor
-        self.selectedItem = optionIndex
-        self.set_text(self.options[self.selectedItem] + ' \u25BC')
+        self.set_selected(optionIndex)
 
         # Call callback
         if self.changedCallback != None:
@@ -521,14 +547,15 @@ class ComboBox(Button):
                 self.changedCallback(self.selectedItem)
 
     # Handle combobox events
-    def handleEvent(self, event):
-        # Handle root button events
-        Button.handleEvent(self, event)
-
+    def handle_event(self, event):
         # If active handle widget events
         if self.active:
-            for widget in self.widgets:
-                widget.handleEvent(event)
+            for widget in reversed(self.widgets):
+                if widget.handle_event(event):
+                    return True
+
+        # Handle root button events
+        return Button.handle_event(self, event)
 
     # Draw combobox
     def draw(self, surface):
@@ -558,7 +585,7 @@ class VehicleViewport:
         self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Game.PIXELS_PER_METER * 3.6), 0, height - 24 - 24, width, 24, game.textFont, Color.BLACK)
         self.widgets.append(self.speedLabel)
 
-    def handleEvent(self, event):
+    def handle_event(self, event):
         # Handle keydown events
         if event.type == pygame.KEYDOWN:
             # Handle left player movement
@@ -599,6 +626,8 @@ class VehicleViewport:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
                     self.vehicle.turning = Vehicle.NOT_TURNING
 
+        return False
+
     def draw(self, surface):
         # Clear the surface
         self.surface.fill(Color.DARK)
@@ -635,9 +664,6 @@ class VehicleSelector:
 
         # Create vehicle selector widget widgets
         self.widgets = []
-        self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
-        self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
-
         ry = 196
         self.nameLabel = Label('', x, y + ry, self.width, 48, game.textFont, Color.WHITE)
         self.widgets.append(self.nameLabel)
@@ -650,6 +676,9 @@ class VehicleSelector:
         ry += 32 + 16
         self.turningSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.turningSpeed)
+
+        self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
+        self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
 
         self.selectedVehicleIndex = random.randint(0, len(vehicles) - 1)
         self.update_vehicle()
@@ -689,10 +718,13 @@ class VehicleSelector:
         self.update_vehicle()
 
     # Handle page events
-    def handleEvent(self, event):
+    def handle_event(self, event):
         # Send all events to the widgets
-        for widget in self.widgets:
-            widget.handleEvent(event)
+        for widget in reversed(self.widgets):
+            if widget.handle_event(event):
+                return True
+
+        return False
 
     # Draw page
     def draw(self, surface):
@@ -708,11 +740,18 @@ class VehicleSelector:
 
 # The map editor widget class
 class MapEditor:
+    GRASS_BRUSH = 0
+    DIRT_BRUSH = 1
+    SAND_BRUSH = 2
+    ASPHALT_BRUSH = 3
+    FINISH_BRUSH = 4
+    TRACK_ERASER = 5
+    TOOL_LABELS =  [ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ]
+
     # Create map editor
-    def __init__(self, game, map, x, y, width, height):
+    def __init__(self, game, map, x, y, width, height, tool):
         self.game = game
-        self.map = map
-        map.set_tile_size(Game.EDITOR_TILE_SIZE)
+        self.set_map(map)
         self.x = x
         self.y = y
         self.width = width
@@ -720,13 +759,71 @@ class MapEditor:
         self.camera = Camera()
         self.center_camera()
 
+        self.tool = tool
+        self.mouseDown = False
+
+    # Set map
+    def set_map(self, map):
+        self.map = map
+        map.set_tile_size(Game.EDITOR_TILE_SIZE)
+
     # Center camera
     def center_camera(self):
         self.camera.x = self.map.startX * Game.EDITOR_TILE_SIZE + Game.EDITOR_TILE_SIZE / 2
         self.camera.y = self.map.startY * Game.EDITOR_TILE_SIZE + Game.EDITOR_TILE_SIZE / 2
 
+    # Use tool
+    def use_tool(self, mouseX, mouseY):
+        tileX = math.floor((mouseX + self.camera.x - Game.WIDTH / 2) / Game.EDITOR_TILE_SIZE)
+        tileY = math.floor((mouseY + self.camera.y - Game.HEIGHT / 2) / Game.EDITOR_TILE_SIZE)
+
+        if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
+            if self.tool == MapEditor.GRASS_BRUSH:
+                self.map.terrain[tileY][tileX] = 0
+
+            if self.tool == MapEditor.DIRT_BRUSH:
+                self.map.terrain[tileY][tileX] = 1
+
+            if self.tool == MapEditor.SAND_BRUSH:
+                self.map.terrain[tileY][tileX] = 2
+
+            if self.tool == MapEditor.ASPHALT_BRUSH:
+                self.map.track[tileY][tileX] = 1
+
+            if self.tool == MapEditor.FINISH_BRUSH:
+                self.map.track[tileY][tileX] = 2
+
+            if self.tool == MapEditor.TRACK_ERASER:
+                self.map.track[tileY][tileX] = 0
+
     # Handle page events
-    def handleEvent(self, event):
+    def handle_event(self, event):
+        # Handle mousedown events
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self.mouseDown = True
+            self.use_tool(event.pos[0], event.pos[1])
+            return True
+
+        # Handle mousemove events
+        if event.type == pygame.MOUSEMOTION:
+            mouseX = event.pos[0]
+            mouseY = event.pos[1]
+
+            if self.mouseDown:
+                self.use_tool(mouseX, mouseY)
+            else:
+                self.camera.movingUp = mouseY >= 2 and mouseY < Game.EDITOR_CAMERA_BORDER
+                self.camera.movingDown = mouseY >= Game.HEIGHT - Game.EDITOR_CAMERA_BORDER and mouseY < Game.HEIGHT - 2
+                self.camera.movingLeft = mouseX >= 2 and mouseX < Game.EDITOR_CAMERA_BORDER
+                self.camera.movingRight = mouseX >= Game.WIDTH - Game.EDITOR_CAMERA_BORDER and mouseX < Game.WIDTH - 2
+
+            return True
+
+        # Handle mouseup events
+        if event.type == pygame.MOUSEBUTTONUP:
+            self.mouseDown = False
+            return True
+
         # Handle keydown events
         if event.type == pygame.KEYDOWN:
             # Handle camera movement
@@ -751,6 +848,8 @@ class MapEditor:
             if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
                 self.camera.movingRight = False
 
+        return False
+
     # Update map editor
     def update(self, delta):
         # Update camera
@@ -771,16 +870,19 @@ class Page:
         self.game = game
 
         # Pick random background
-        self.backgroundColor = (random.randint(0, 150), random.randint(0, 150), random.randint(0, 150))
+        self.backgroundColor = (random.randint(50, 150), random.randint(50, 150), random.randint(50, 150))
 
         # Create empty widgets list
         self.widgets = []
 
     # Handle page events
-    def handleEvent(self, event):
+    def handle_event(self, event):
         # Send all events to the widgets
-        for widget in self.widgets:
-            widget.handleEvent(event)
+        for widget in reversed(self.widgets):
+            if widget.handle_event(event):
+                return True
+
+        return False
 
     # Update page
     def update(self, delta):
@@ -802,7 +904,6 @@ class MenuPage(Page):
         Page.__init__(self, game)
 
         # Create menu page widgets
-        self.widgets.append(Label('v' + Game.VERSION, Game.WIDTH - 16 - 96, 16, 96, 32, game.textFont, Color.WHITE, self.version_label_clicked))
         y = 128
         self.widgets.append(Label('Bassie Racing', 0, y, Game.WIDTH, 96, game.titleFont, Color.WHITE))
         y += 96 + 16
@@ -813,6 +914,7 @@ class MenuPage(Page):
         self.widgets.append(Button('Help', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
         y += 64 + 16
         self.widgets.append(Button('Exit', Game.WIDTH // 4, y, Game.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
+        self.widgets.append(Label('v' + Game.VERSION, Game.WIDTH - 16 - 96, 16, 96, 32, game.textFont, Color.WHITE, self.version_label_clicked))
         self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, Game.HEIGHT - 64 - 16, Game.WIDTH, 64, game.textFont, Color.WHITE, self.footer_label_clicked))
 
     # Version label clicked
@@ -889,7 +991,7 @@ class GamePage(Page):
         Page.__init__(self, game)
 
         # Init the map
-        self.map = Map(game.tilesImage, 40, 40)
+        self.map = Map.load_from_file(game.tilesImage, 'map.json') # Map(game.tilesImage, 'Random Map', 40, 40)
 
         # Init the vehicles
         self.vehicles = []
@@ -929,10 +1031,10 @@ class EditorPage(Page):
     def __init__(self, game):
         Page.__init__(self, game)
 
-        self.map = Map(game.tilesImage, 32, 32)
+        self.map = Map(game.tilesImage, 'Custom Map', 32, 32)
 
         # Create edit page widgets
-        self.mapEditor = MapEditor(game, self.map, 0, 0, Game.WIDTH, Game.HEIGHT)
+        self.mapEditor = MapEditor(game, self.map, 0, 0, Game.WIDTH, Game.HEIGHT, MapEditor.ASPHALT_BRUSH)
         self.widgets.append(self.mapEditor)
 
         self.widgets.append(Button('New', 16, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
@@ -943,7 +1045,7 @@ class EditorPage(Page):
 
         self.sizeComboBox = ComboBox([ '%s (%dx%d)' % (Game.MAP_SIZE_LABELS[i], Game.MAP_SIZES[i], Game.MAP_SIZES[i]) for i in range(len(Game.MAP_SIZES)) ], 1, 16, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
         self.widgets.append(self.sizeComboBox)
-        self.brushComboBox = ComboBox([ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ], 3, Game.WIDTH // 2 + 8, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
+        self.brushComboBox = ComboBox(MapEditor.TOOL_LABELS, 3, Game.WIDTH // 2 + 8, Game.HEIGHT - 64 - 16, (Game.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
         self.widgets.append(self.brushComboBox)
 
     # Update map editor
@@ -953,16 +1055,33 @@ class EditorPage(Page):
     # New button clicked
     def new_button_clicked(self):
         for i in range(len(Game.MAP_SIZES)):
-            if self.sizeComboBox.selectedItem == 0:
-                self.map = Map(self.game.tilesImage, Game.MAP_SIZES[i], Game.MAP_SIZES[i])
+            if i == self.sizeComboBox.selectedItem:
+                self.map = Map(self.game.tilesImage, 'Custom Map', Game.MAP_SIZES[i], Game.MAP_SIZES[i])
+                self.mapEditor.set_map(self.map)
+                self.mapEditor.center_camera()
+                return
+
+        # When custom size
+        self.map = Map(self.game.tilesImage, 'Custom Map', 32, 32)
+        self.mapEditor.set_map(self.map)
         self.mapEditor.center_camera()
+        self.sizeComboBox.set_selected(1)
 
     # Load button clicked
     def load_button_clicked(self):
         path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
         if path != '':
             self.map = Map.load_from_file(self.game.tilesImage, path)
+            self.mapEditor.set_map(self.map)
             self.mapEditor.center_camera()
+
+            for i in range(len(Game.MAP_SIZES)):
+                if Game.MAP_SIZES[i] == self.map.width:
+                    self.sizeComboBox.set_selected(i)
+                    return
+
+            self.sizeComboBox.selectedItem = len(self.sizeComboBox.options)
+            self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
 
     # Save button clicked
     def save_button_clicked(self):
@@ -979,11 +1098,15 @@ class EditorPage(Page):
         for i in range(len(Game.MAP_SIZES)):
             if selectedItem == i:
                 self.map.resize(Game.MAP_SIZES[i], Game.MAP_SIZES[i])
-        self.mapEditor.center_camera()
+                self.mapEditor.center_camera()
+                break
 
     # Brush combobox changed
     def brush_combobox_changed(self, selectedItem):
-        pass
+        for i in range(len(MapEditor.TOOL_LABELS)):
+            if selectedItem == i:
+                self.mapEditor.tool = i
+                break
 
 # The help page class
 class HelpPage(Page):
@@ -1021,6 +1144,7 @@ class Game:
 
     # Game constants
     TILE_SPRITE_SIZE = 128
+    EDITOR_CAMERA_BORDER = 12
     EDITOR_TILE_SIZE = 32
     PIXELS_PER_METER = 18
     MAP_SIZES = [ 24, 32, 48, 56 ]
@@ -1054,9 +1178,9 @@ class Game:
         self.tkinter_window.withdraw()
 
     # Handle user events
-    def handleEvent(self, event):
+    def handle_event(self, event):
         # Send event to current page
-        self.page.handleEvent(event)
+        self.page.handle_event(event)
 
         # Handle window close events
         if event.type == pygame.QUIT:
@@ -1081,7 +1205,7 @@ class Game:
 
             # Handle window events
             for event in pygame.event.get():
-                self.handleEvent(event)
+                self.handle_event(event)
 
             # Update game
             self.update(delta)
