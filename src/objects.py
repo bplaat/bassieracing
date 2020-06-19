@@ -4,7 +4,7 @@
 from constants import *
 import json
 import math
-import noise
+from noise import *
 import pygame
 import random
 from stats import *
@@ -118,6 +118,7 @@ class Map:
         self.height = height
 
         # Generate terrain
+        self.noise = Noise()
         self.noiseX = random.randint(-1000000, 1000000)
         self.noiseY = random.randint(-1000000, 1000000)
 
@@ -128,7 +129,7 @@ class Map:
         self.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
         for y in range(height):
             for x in range(width):
-                n = noise.pnoise2((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
+                n = self.noise.noise((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
                 if n > 0.2:
                     self.terrain[y][x] = 2
                 elif n > 0.075:
@@ -174,7 +175,7 @@ class Map:
 
     # Save map to file
     def save_to_file(self, file_path):
-        with open(patfile_pathh, 'w') as file:
+        with open(file_path, 'w') as file:
             data = {
                 'type': 'BassieRacing Map',
                 'version': Config.VERSION,
@@ -209,7 +210,7 @@ class Map:
         terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
         for y in range(height):
             for x in range(width):
-                n = noise.pnoise2((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
+                n = self.noise.noise((x + self.noiseX) / 20, (y + self.noiseY) / 20, 2)
                 if n > 0.2:
                     terrain[y][x] = 2
                 elif n > 0.075:

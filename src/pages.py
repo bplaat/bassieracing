@@ -58,7 +58,7 @@ class IntroPage(Page):
         y += 256 + 32
         self.widgets.append(Label('BassieSoft', 0, y, Config.WIDTH, 96, game.titleFont, Color.BLACK))
         y += 96 + 16
-        self.widgets.append(Label('Presents a brand new racing game...', 0, y, Config.WIDTH, 64, game.textFont, Color.BLACK))
+        self.widgets.append(Label('Presents a new racing game...', 0, y, Config.WIDTH, 64, game.textFont, Color.BLACK))
 
         # Load and play intro sound
         introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
@@ -138,7 +138,7 @@ class SelectMapPage(Page):
 
         # Create select map page widgets
         self.widgets.append(Label('Select a map to race', 0, 24, Config.WIDTH, 96, game.titleFont, Color.WHITE))
-        self.widgets.append(Label('Comming soon...', 0, 0, Config.WIDTH, Config.HEIGHT, game.textFont, Color.WHITE))
+        self.widgets.append(Label('Coming soon...', 0, 0, Config.WIDTH, Config.HEIGHT, game.textFont, Color.WHITE))
         self.widgets.append(Button('Back', 16, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button('Continue', Config.WIDTH - 16 - 240, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
