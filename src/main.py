@@ -19,6 +19,7 @@ import tkinter
 class Game:
     def __init__(self):
         # Init pygame
+        pygame.mixer.pre_init(44100, 16, 1, 512)
         pygame.init()
 
         # Create the window
@@ -35,16 +36,16 @@ class Game:
         self.textFont = pygame.font.Font(font_path, 24)
         self.smallFont = pygame.font.Font(font_path, 16)
 
-        # Load textures
+        # Load images
         self.tilesImage = pygame.image.load('assets/images/tiles.png').convert_alpha()
         self.vehiclesImage = pygame.image.load('assets/images/vehicles.png').convert_alpha()
 
-        # Hidden Tkinter window for file dialogs and error messages
+        # Create hidden Tkinter window for file dialogs and error messages
         self.tkinter_window = tkinter.Tk()
         self.tkinter_window.withdraw()
 
-        # Create menu page
-        self.page = MenuPage(self)
+        # Create intro page
+        self.page = IntroPage(self)
 
     # Handle user events
     def handle_event(self, event):

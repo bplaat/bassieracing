@@ -4,7 +4,7 @@
 class Config:
     # App constants
     NAME = 'BassieRacing'
-    VERSION = '0.3'
+    VERSION = '0.4.0'
 
     # Window constants
     WIDTH = 1280
@@ -27,3 +27,9 @@ class Color:
     DARK = ( 25, 25, 25 )
     LIGHT_GRAY = ( 225, 225, 225 )
     WHITE = ( 255, 255, 255 )
+
+# The text align constants class
+class TextAlign:
+    LEFT = 0
+    CENTER = 1
+    RIGHT = 2

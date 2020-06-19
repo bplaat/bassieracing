@@ -7,27 +7,17 @@ import pygame
 import random
 from stats import *
 
-# The label widget class
-class Label:
-    # Create label
-    def __init__(self, text, x, y, width, height, font, color, clickCallback = None, callbackExtra = None):
-        self.text = text
+# The widget class
+class Widget:
+    def __init__(self, x, y, width, height, clickCallback = None, callbackExtra = None):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.font = font
-        self.color = color
-        self.textSurface = font.render(text, True, color)
         self.clickCallback = clickCallback
         self.callbackExtra = callbackExtra
 
-    # Update label text
-    def set_text(self, text):
-        self.text = text
-        self.textSurface = self.font.render(self.text, True, self.color)
-
-    # Handle label events
+    # Handle widget events
     def handle_event(self, event):
         # Handle mouse events
         if (
@@ -45,18 +35,50 @@ class Label:
 
         return False
 
+    # Draw widget
+    def draw(self, surface):
+        pass
+
+# The label widget class
+class Label(Widget):
+    # Create label
+    def __init__(self, text, x, y, width, height, font, color, align = TextAlign.CENTER, clickCallback = None, callbackExtra = None):
+        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
+        self.font = font
+        self.color = color
+        self.align = align
+        self.set_text(text)
+
+    # Update label text
+    def set_text(self, text):
+        self.text = text
+        self.textSurface = self.font.render(self.text, True, self.color)
+
     # Draw label
     def draw(self, surface):
-        surface.blit(self.textSurface, (
-            self.x + (self.width - self.textSurface.get_width()) // 2,
-            self.y + (self.height - self.textSurface.get_height()) // 2
-        ))
+        if self.align == TextAlign.LEFT:
+            surface.blit(self.textSurface, (
+                self.x,
+                self.y + (self.height - self.textSurface.get_height()) // 2
+            ))
+
+        if self.align == TextAlign.CENTER:
+            surface.blit(self.textSurface, (
+                self.x + (self.width - self.textSurface.get_width()) // 2,
+                self.y + (self.height - self.textSurface.get_height()) // 2
+            ))
+
+        if self.align == TextAlign.RIGHT:
+            surface.blit(self.textSurface, (
+                self.x + (self.width - self.textSurface.get_width()),
+                self.y + (self.height - self.textSurface.get_height()) // 2
+            ))
 
 # The button widget class
 class Button(Label):
     # Create button
     def __init__(self, text, x, y, width, height, font, color, backgroundColor, clickCallback = None, callbackExtra = None):
-        Label.__init__(self, text, x, y, width, height, font, color, clickCallback, callbackExtra)
+        Label.__init__(self, text, x, y, width, height, font, color, TextAlign.CENTER, clickCallback, callbackExtra)
         self.backgroundColor = backgroundColor
 
     # Draw button
@@ -135,6 +157,31 @@ class ComboBox(Button):
         if self.active:
             for widget in self.widgets:
                 widget.draw(surface)
+
+# The image widget class
+class Image(Widget):
+    def __init__(self, image, x, y, width, height, clickCallback = None, callbackExtra = None):
+        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
+        self.set_image(image)
+
+    # Set image image
+    def set_image(self, image):
+        if isinstance(image, str):
+            self.surface = pygame.image.load(image).convert_alpha()
+        elif isinstance(image, pygame.Surface):
+            self.surface = image
+        elif image == None:
+            self.surface = None
+        else:
+            raise ValueError('Image is not a file path, a surface or None!')
+
+    # Draw image
+    def draw(self, surface):
+        if self.surface != None:
+            surface.blit(self.surface, (
+                self.x + (self.width - self.surface.get_width()) // 2,
+                self.y + (self.height - self.surface.get_height()) // 2
+            ))
 
 # The vehicle viewport widget class
 class VehicleViewport:
@@ -233,17 +280,21 @@ class VehicleSelector:
 
         # Create vehicle selector widget widgets
         self.widgets = []
-        ry = 196
-        self.nameLabel = Label('', x, y + ry, self.width, 48, game.textFont, Color.WHITE)
+
+        ry = y + 32
+        self.vehicleImage = Image(None, x, ry, width, 128)
+        self.widgets.append(self.vehicleImage)
+        ry += 128 + 32
+        self.nameLabel = Label('', x, ry, width, 48, game.textFont, Color.WHITE)
         self.widgets.append(self.nameLabel)
         ry += 48 + 16
-        self.maxForwardSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
+        self.maxForwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.maxForwardSpeed)
         ry += 32 + 16
-        self.maxBackwardSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
+        self.maxBackwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.maxBackwardSpeed)
         ry += 32 + 16
-        self.turningSpeed = Label('', x, y + ry, self.width, 32, game.smallFont, Color.WHITE)
+        self.turningSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.turningSpeed)
 
         self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
@@ -255,13 +306,14 @@ class VehicleSelector:
     # Update selected vehicle
     def update_vehicle(self):
         self.selectedVehicle = vehicles[self.selectedVehicleIndex]
-        self.vehicleImage = pygame.Surface(( self.selectedVehicle['width'], self.selectedVehicle['height'] ), pygame.SRCALPHA)
-        self.vehicleImage.blit(self.game.vehiclesImage, ( 0, 0 ),  (
+        vehicleImageSurface = pygame.Surface(( self.selectedVehicle['width'], self.selectedVehicle['height'] ), pygame.SRCALPHA)
+        vehicleImageSurface.blit(self.game.vehiclesImage, ( 0, 0 ),  (
             self.selectedVehicle['colors'][self.color]['x'],
             self.selectedVehicle['colors'][self.color]['y'],
             self.selectedVehicle['width'],
             self.selectedVehicle['height']
         ))
+        self.vehicleImage.set_image(vehicleImageSurface)
 
         self.nameLabel.set_text(self.selectedVehicle['name'])
         self.maxForwardSpeed.set_text('Max Forward Speed: %d km/h' % (self.selectedVehicle['maxForwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
@@ -297,12 +349,6 @@ class VehicleSelector:
 
     # Draw page
     def draw(self, surface):
-        # Draw vehicle image
-        surface.blit(self.vehicleImage, (
-            self.x + ((self.width - self.selectedVehicle['width']) // 2),
-            self.y + (((self.height - 256) - self.selectedVehicle['height']) // 2)
-        ))
-
         # Draw widgets
         for widget in self.widgets:
             widget.draw(surface)

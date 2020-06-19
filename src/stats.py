@@ -5,10 +5,9 @@ import math
 
 # The vehicles data
 vehicles = [
+    # Speedy Car
     {
-        'id': 0,
         'name': 'Speedy Car',
-
         'colors': [
             # Blue
             {
@@ -23,7 +22,6 @@ vehicles = [
         ],
         'width': 70,
         'height': 131,
-
         'forwardAcceleration': 1,
         'maxForwardVelocity': 700,
         'backwardAcceleration': -0.5,
@@ -31,10 +29,9 @@ vehicles = [
         'turningSpeed': math.radians(90)
     },
 
+    # CyberTruck
     {
-        'id': 1,
         'name': 'CyberTruck',
-
         'colors': [
             # Blue
             {
@@ -49,7 +46,6 @@ vehicles = [
         ],
         'width': 70,
         'height': 131,
-
         'forwardAcceleration': 0.5,
         'maxForwardVelocity': 800,
         'backwardAcceleration': -0.25,
@@ -57,10 +53,9 @@ vehicles = [
         'turningSpeed': math.radians(65)
     },
 
+    # Torchcycle
     {
-        'id': 2,
         'name': 'Torchcycle',
-
         'colors': [
             # Blue
             {
@@ -75,7 +70,6 @@ vehicles = [
         ],
         'width': 44,
         'height': 100,
-
         'forwardAcceleration': 1.5,
         'maxForwardVelocity': 650,
         'backwardAcceleration': -1,
@@ -83,10 +77,9 @@ vehicles = [
         'turningSpeed': math.radians(180)
     },
 
+    # MemeRacer
     {
-        'id': 2,
         'name': 'MemeRacer',
-
         'colors': [
             # Blue
             {
@@ -101,7 +94,6 @@ vehicles = [
         ],
         'width': 71,
         'height': 116,
-
         'forwardAcceleration': 2,
         'maxForwardVelocity': 400,
         'backwardAcceleration': -0.75,
@@ -112,23 +104,20 @@ vehicles = [
 
 # The terrain tiles data
 terrainTiles = [
+    # Grass
     {
-        'id': 0,
-        'name': 'Grass',
         'x': 1408,
         'y': 1664
     },
 
+    # Dirt
     {
-        'id': 1,
-        'name': 'Dirt',
         'x': 0,
         'y': 256
     },
 
+    # Sand
     {
-        'id': 2,
-        'name': 'Sand',
         'x': 1280,
         'y': 2048
     }
@@ -136,18 +125,14 @@ terrainTiles = [
 
 # The track tiles data
 trackTiles = [
-    None,
-
+    # Asphalt
     {
-        'id': 1,
-        'name': 'Asphalt',
         'x': 512,
         'y': 1280
     },
 
+    # Finish
     {
-        'id': 1,
-        'name': 'Finish',
         'x': 0,
         'y': 2048
     }

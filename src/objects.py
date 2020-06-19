@@ -8,6 +8,7 @@ import noise
 import pygame
 import random
 from stats import *
+import tkinter.messagebox
 
 # The camera class
 class Camera:
@@ -149,7 +150,7 @@ class Map:
             return None
 
         if data['version'] != Config.VERSION:
-            tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur')
+            tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur\n\nFile version: ' + data['version'] + '\nGame version: ' + Config.VERSION)
 
         map = Map(tilesImage, data['name'], data['width'], data['height'])
 
@@ -167,13 +168,13 @@ class Map:
 
     # Create map by loading a file
     @staticmethod
-    def load_from_file(tilesImage, path):
-        with open(path, 'r') as file:
+    def load_from_file(tilesImage, file_path):
+        with open(file_path, 'r') as file:
             return Map.load_from_string(tilesImage, file.read())
 
     # Save map to file
-    def save_to_file(self, path):
-        with open(path, 'w') as file:
+    def save_to_file(self, file_path):
+        with open(patfile_pathh, 'w') as file:
             data = {
                 'type': 'BassieRacing Map',
                 'version': Config.VERSION,
@@ -263,7 +264,7 @@ class Map:
             for x in range(self.width):
                 trackId = self.track[y][x]
                 if trackId != 0:
-                    tileType = trackTiles[trackId]
+                    tileType = trackTiles[trackId - 1]
                     tx = math.floor(x * self.tileSize - (camera.x - surface.get_width() / 2))
                     ty = math.floor(y *  self.tileSize - (camera.y - surface.get_height() / 2))
                     if (

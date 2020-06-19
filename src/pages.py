@@ -6,7 +6,6 @@ import math
 from objects import *
 import random
 import tkinter.filedialog
-import tkinter.messagebox
 import webbrowser
 from widgets import *
 
@@ -44,6 +43,49 @@ class Page:
         for widget in self.widgets:
             widget.draw(surface)
 
+# The intro page class
+class IntroPage(Page):
+    # Create menu page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+        # Set white background color
+        self.backgroundColor = Color.WHITE
+
+        # Create intro page widgets
+        y = 128
+        self.widgets.append(Image('assets/images/logo.png', 0, y, Config.WIDTH, 256))
+        y += 256 + 32
+        self.widgets.append(Label('BassieSoft', 0, y, Config.WIDTH, 96, game.titleFont, Color.BLACK))
+        y += 96 + 16
+        self.widgets.append(Label('Presents a brand new racing game...', 0, y, Config.WIDTH, 64, game.textFont, Color.BLACK))
+
+        # Load and play intro sound
+        introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
+        self.introSoundChannel = introSound.play()
+        self.introSoundChannel.set_endevent(pygame.USEREVENT + 1)
+
+    # Handle intro age events
+    def handle_event(self, event):
+        if Page.handle_event(self, event):
+            return True
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            self.introSoundChannel.set_endevent()
+            self.introSoundChannel.fadeout(250)
+            self.game.page = MenuPage(self.game)
+            return True
+
+        if event.type == pygame.KEYUP and event.key == pygame.K_ESCAPE:
+            self.introSoundChannel.set_endevent()
+            self.introSoundChannel.fadeout(250)
+            self.game.page = MenuPage(self.game)
+
+        if event.type == pygame.USEREVENT + 1:
+            self.game.page = MenuPage(self.game)
+
+        return False
+
 # The menu page class
 class MenuPage(Page):
     # Create menu page
@@ -61,8 +103,8 @@ class MenuPage(Page):
         self.widgets.append(Button('Help', Config.WIDTH // 4, y, Config.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
         y += 64 + 16
         self.widgets.append(Button('Exit', Config.WIDTH // 4, y, Config.WIDTH // 2, 64, game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
-        self.widgets.append(Label('v' + Config.VERSION, Config.WIDTH - 16 - 96, 16, 96, 32, game.textFont, Color.WHITE, self.version_label_clicked))
-        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, Config.HEIGHT - 64 - 16, Config.WIDTH, 64, game.textFont, Color.WHITE, self.footer_label_clicked))
+        self.widgets.append(Label('v' + Config.VERSION, Config.WIDTH - 16 - 128, 16, 128, 32, game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
+        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, Config.HEIGHT - 64 - 16, Config.WIDTH, 64, game.textFont, Color.WHITE, TextAlign.CENTER, self.footer_label_clicked))
 
     # Version label clicked
     def version_label_clicked(self):
@@ -216,9 +258,9 @@ class EditorPage(Page):
 
     # Load button clicked
     def load_button_clicked(self):
-        path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
-        if path != '':
-            self.map = Map.load_from_file(self.game.tilesImage, path)
+        file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
+        if file_path != '':
+            self.map = Map.load_from_file(self.game.tilesImage, file_path)
             self.mapEditor.set_map(self.map)
             self.mapEditor.center_camera()
 
@@ -232,9 +274,9 @@ class EditorPage(Page):
 
     # Save button clicked
     def save_button_clicked(self):
-        path = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
-        if path != '':
-            self.map.save_to_file(path)
+        file_path = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
+        if file_path != '':
+            self.map.save_to_file(file_path)
 
     # Back button clicked
     def back_button_clicked(self):
