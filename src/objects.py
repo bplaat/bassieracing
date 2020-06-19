@@ -12,10 +12,35 @@ import tkinter.messagebox
 
 # The camera class
 class Camera:
-    def __init__(self, x = 0, y = 0):
+    def __init__(self, x, y, tilesImage, tileSize, vehiclesImage, vehicleScale = None):
         self.x = x
         self.y = y
+
+        if tileSize == Config.TILE_SPRITE_SIZE:
+            self.tilesImage = tilesImage
+        else:
+            self.tilesImage = pygame.transform.scale(tilesImage, (
+                math.floor(tilesImage.get_width() * (tileSize / Config.TILE_SPRITE_SIZE)),
+                math.floor(tilesImage.get_height() * (tileSize / Config.TILE_SPRITE_SIZE))
+            ))
+        self.tileSize = tileSize
+
+        if vehicleScale == None:
+            self.vehicleScale = tileSize / Config.TILE_SPRITE_SIZE
+        else:
+            self.vehicleScale = vehicleScale
+
+        if tileSize == Config.TILE_SPRITE_SIZE:
+            self.vehiclesImage = vehiclesImage
+        else:
+            self.vehiclesImage = pygame.transform.scale(vehiclesImage, (
+                math.floor(vehiclesImage.get_width() * self.vehicleScale),
+                math.floor(vehiclesImage.get_height() * self.vehicleScale)
+            ))
+        self.vehicleImageCache = [ None for i in range(2) ]
+
         self.speed = 400
+
         self.movingUp = False
         self.movingDown = False
         self.movingLeft = False
@@ -41,18 +66,10 @@ class Vehicle:
     TURNING_LEFT = 1
     TURNING_RIGHT = 2
 
-    def __init__(self, vehiclesImage, id, vehicleType, color, x, y, angle):
+    def __init__(self, id, vehicleType, color, x, y, angle):
         self.id = id
         self.vehicleType = vehicleType
         self.color = color
-
-        self.vehicleImage = pygame.Surface(( vehicleType['width'], vehicleType['height'] ), pygame.SRCALPHA)
-        self.vehicleImage.blit(vehiclesImage, ( 0, 0 ),  (
-            vehicleType['colors'][color]['x'],
-            vehicleType['colors'][color]['y'],
-            vehicleType['width'],
-            vehicleType['height']
-        ))
 
         self.x = x
         self.y = y
@@ -96,8 +113,21 @@ class Vehicle:
         self.y -= self.velocity * math.cos(self.angle) * delta
 
     def draw(self, surface, camera):
+        # Crop vehicle image to camara cache if not present
+        if camera.vehicleImageCache[self.id] == None:
+            camera.vehicleImageCache[self.id] = pygame.Surface(
+                ( self.vehicleType['width'], self.vehicleType['height'] ),
+                pygame.SRCALPHA
+            )
+            camera.vehicleImageCache[self.id].blit(camera.vehiclesImage, ( 0, 0 ),  (
+                math.floor(self.vehicleType['colors'][self.color]['x'] * camera.vehicleScale),
+                math.floor(self.vehicleType['colors'][self.color]['y'] * camera.vehicleScale),
+                math.floor(self.vehicleType['width'] * camera.vehicleScale),
+                math.floor(self.vehicleType['height'] * camera.vehicleScale)
+            ))
+
         # Rotate vehicle and draw
-        rotatedVehicleImage = pygame.transform.rotate(self.vehicleImage, math.degrees(self.angle))
+        rotatedVehicleImage = pygame.transform.rotate(camera.vehicleImageCache[self.id], math.degrees(self.angle))
         x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() // 2))
         y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() // 2))
         if (
@@ -108,17 +138,13 @@ class Vehicle:
 
 # The map class
 class Map:
-    def __init__(self, tilesImage, name, width, height):
-        self.tileSize = Config.TILE_SPRITE_SIZE
-        self.originalTilesImage = tilesImage
-        self.tilesImage = tilesImage
-
+    def __init__(self, name, width, height):
         self.name = name
         self.width = width
         self.height = height
 
         # Generate terrain
-        self.noise = Noise()
+        self.noise = PerlinNoise()
         self.noiseX = random.randint(-1000000, 1000000)
         self.noiseY = random.randint(-1000000, 1000000)
 
@@ -137,7 +163,7 @@ class Map:
 
     # Create map by loading a JSON string
     @staticmethod
-    def load_from_string(tilesImage, jsonString):
+    def load_from_string(jsonString):
         try:
             data = json.loads(jsonString)
         except:
@@ -151,7 +177,7 @@ class Map:
         if data['version'] != Config.VERSION:
             tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur\n\nFile version: ' + data['version'] + '\nGame version: ' + Config.VERSION)
 
-        map = Map(tilesImage, data['name'], data['width'], data['height'])
+        map = Map(data['name'], data['width'], data['height'])
 
         map.noiseX = data['noise']['x']
         map.noiseY = data['noise']['y']
@@ -167,9 +193,9 @@ class Map:
 
     # Create map by loading a file
     @staticmethod
-    def load_from_file(tilesImage, file_path):
+    def load_from_file(file_path):
         with open(file_path, 'r') as file:
-            return Map.load_from_string(tilesImage, file.read())
+            return Map.load_from_string(file.read())
 
     # Generate terrain tile
     def generate_terrain_tile(self, x, y):
@@ -256,31 +282,23 @@ class Map:
             self.startX -= dw
             self.startY -= dh
 
-    # Set tile size
-    def set_tile_size(self, tileSize):
-        self.tileSize = tileSize
-        self.tilesImage = pygame.transform.scale(self.originalTilesImage, (
-            math.floor(self.originalTilesImage.get_width() * (tileSize / Config.TILE_SPRITE_SIZE)),
-            math.floor(self.originalTilesImage.get_height() * (tileSize / Config.TILE_SPRITE_SIZE))
-        ))
-
     # Draw the map
     def draw(self, surface, camera):
         # Draw terrain tiles to surface
         for y in range(self.height):
             for x in range(self.width):
                 tileType = terrainTiles[self.terrain[y][x]]
-                tx = math.floor(x * self.tileSize - (camera.x - surface.get_width() / 2))
-                ty = math.floor(y *  self.tileSize - (camera.y - surface.get_height() / 2))
-                if tx + self.tileSize >= 0 and ty + self.tileSize >= 0 and tx < surface.get_width() and ty < surface.get_height():
+                tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
+                ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
+                if tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and tx < surface.get_width() and ty < surface.get_height():
                     surface.blit(
-                        self.tilesImage,
-                        ( tx, ty, self.tileSize, self.tileSize ),
+                        camera.tilesImage,
+                        ( tx, ty, camera.tileSize, camera.tileSize ),
                         (
-                            math.floor(tileType['x'] * (self.tileSize / Config.TILE_SPRITE_SIZE)),
-                            math.floor(tileType['y'] * (self.tileSize / Config.TILE_SPRITE_SIZE)),
-                            self.tileSize,
-                            self.tileSize
+                            math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
+                            math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
+                            camera.tileSize,
+                            camera.tileSize
                         )
                     )
 
@@ -290,19 +308,19 @@ class Map:
                 trackId = self.track[y][x]
                 if trackId != 0:
                     tileType = trackTiles[trackId - 1]
-                    tx = math.floor(x * self.tileSize - (camera.x - surface.get_width() / 2))
-                    ty = math.floor(y *  self.tileSize - (camera.y - surface.get_height() / 2))
+                    tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
+                    ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
                     if (
-                        tx + self.tileSize >= 0 and ty + self.tileSize >= 0 and
+                        tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and
                         tx < surface.get_width() and ty < surface.get_height()
                     ):
                         surface.blit(
-                            self.tilesImage,
-                            ( tx, ty, self.tileSize, self.tileSize ),
+                            camera.tilesImage,
+                            ( tx, ty, camera.tileSize, camera.tileSize ),
                             (
-                                math.floor(tileType['x'] * (self.tileSize / Config.TILE_SPRITE_SIZE)),
-                                math.floor(tileType['y'] * (self.tileSize / Config.TILE_SPRITE_SIZE)),
-                                self.tileSize,
-                                self.tileSize
+                                math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
+                                math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
+                                camera.tileSize,
+                                camera.tileSize
                             )
                         )

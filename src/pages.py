@@ -136,25 +136,34 @@ class SelectMapPage(Page):
     def __init__(self, game):
         Page.__init__(self, game)
 
+        self.map = Map.load_from_file('assets/maps/classic-eight.json')
+
         # Create select map page widgets
         self.widgets.append(Label('Select a map to race', 0, 24, Config.WIDTH, 96, game.titleFont, Color.WHITE))
-        self.widgets.append(Label('Coming soon...', 0, 0, Config.WIDTH, Config.HEIGHT, game.textFont, Color.WHITE))
+        self.widgets.append(MiniMap(game, self.map, None, 100, 100, 320, 320))
         self.widgets.append(Button('Back', 16, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button('Load custom map', (Config.WIDTH - 400) // 2, Config.HEIGHT - 64 - 16, 400, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
         self.widgets.append(Button('Continue', Config.WIDTH - 16 - 240, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
     # Back button clicked
     def back_button_clicked(self):
         self.game.page = MenuPage(self.game)
 
+    # Load button clicked
+    def load_button_clicked(self):
+        pass
+
     # Continue button clicked
     def continue_button_clicked(self):
-        self.game.page = SelectVehiclePage(self.game)
+        self.game.page = SelectVehiclePage(self.game, self.map)
 
 # The select vehicle page class
 class SelectVehiclePage(Page):
     # Create select vehicle page
-    def __init__(self, game):
+    def __init__(self, game, map):
         Page.__init__(self, game)
+
+        self.map = map
 
         # Create select vehicle page widgets
         self.widgets.append(Label('Select both your vehicle', 0, 24, Config.WIDTH, 96, game.titleFont, Color.WHITE))
@@ -171,28 +180,27 @@ class SelectVehiclePage(Page):
 
     # Race button clicked
     def race_button_clicked(self):
-        self.game.page = GamePage(self.game, self.leftVehicleSelector.selectedVehicle, self.rightVehicleSelector.selectedVehicle)
+        self.game.page = GamePage(self.game, self.map, self.leftVehicleSelector.selectedVehicle, self.rightVehicleSelector.selectedVehicle)
 
 # The game page class
 class GamePage(Page):
     # Create game page
-    def __init__(self, game, leftVehicleType, rightVehicleType):
+    def __init__(self, game, map, leftVehicleType, rightVehicleType):
         Page.__init__(self, game)
 
-        # Init the map
-        self.map = Map.load_from_file(game.tilesImage, 'assets/maps/classic-eight.json')
+        self.map = map
 
         # Init the vehicles
         self.vehicles = []
 
-        leftVehicle = Vehicle(game.vehiclesImage, 0, leftVehicleType, 0,
+        leftVehicle = Vehicle(0, leftVehicleType, 0,
             self.map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
             self.map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
             self.map.startAngle
         )
         self.vehicles.append(leftVehicle)
 
-        rightVehicle = Vehicle(game.vehiclesImage, 1, rightVehicleType, 1,
+        rightVehicle = Vehicle(1, rightVehicleType, 1,
             self.map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
             self.map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * 1.5,
             self.map.startAngle
@@ -202,6 +210,7 @@ class GamePage(Page):
         # Create game page widgets
         self.widgets.append(VehicleViewport(game, leftVehicle, 0, 0, Config.WIDTH // 2, Config.HEIGHT, self.map, self.vehicles))
         self.widgets.append(VehicleViewport(game, rightVehicle, Config.WIDTH // 2, 0, Config.WIDTH // 2, Config.HEIGHT, self.map, self.vehicles))
+        self.widgets.append(MiniMap(game, self.map, self.vehicles, (Config.WIDTH - 256) // 2, 0, 256, 256))
         self.widgets.append(Button('Back', Config.WIDTH - 16 - 128, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked
@@ -220,7 +229,7 @@ class EditorPage(Page):
     def __init__(self, game):
         Page.__init__(self, game)
 
-        self.map = Map(game.tilesImage, 'Custom Map', 32, 32)
+        self.map = Map('Custom Map', 32, 32)
 
         # Create edit page widgets
         self.mapEditor = MapEditor(game, self.map, 0, 0, Config.WIDTH, Config.HEIGHT, MapEditor.ASPHALT_BRUSH)
@@ -245,14 +254,14 @@ class EditorPage(Page):
     def new_button_clicked(self):
         for i in range(len(Config.MAP_SIZES)):
             if i == self.sizeComboBox.selectedItem:
-                self.map = Map(self.game.tilesImage, 'Custom Map', Config.MAP_SIZES[i], Config.MAP_SIZES[i])
-                self.mapEditor.set_map(self.map)
+                self.map = Map('Custom Map', Config.MAP_SIZES[i], Config.MAP_SIZES[i])
+                self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
                 return
 
         # When custom size
-        self.map = Map(self.game.tilesImage, 'Custom Map', 32, 32)
-        self.mapEditor.set_map(self.map)
+        self.map = Map('Custom Map', 32, 32)
+        self.mapEditor.map = self.map
         self.mapEditor.center_camera()
         self.sizeComboBox.set_selected(1)
 
@@ -260,9 +269,9 @@ class EditorPage(Page):
     def load_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path != '':
-            self.map = Map.load_from_file(self.game.tilesImage, file_path)
+            self.map = Map.load_from_file(file_path)
             if self.map != None:
-                self.mapEditor.set_map(self.map)
+                self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
 
                 for i in range(len(Config.MAP_SIZES)):

@@ -160,6 +160,7 @@ class ComboBox(Button):
 
 # The image widget class
 class Image(Widget):
+    # Create image
     def __init__(self, image, x, y, width, height, clickCallback = None, callbackExtra = None):
         Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
         self.set_image(image)
@@ -183,6 +184,38 @@ class Image(Widget):
                 self.y + (self.height - self.surface.get_height()) // 2
             ))
 
+# The minimap widget class
+class MiniMap(Widget):
+    # Create minimap
+    def __init__(self, game, map, vehicles, x, y, width, height, clickCallback = None, callbackExtra = None):
+        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
+        self.game = game
+        self.set_map(map)
+        self.vehicles = vehicles
+        self.surface = pygame.Surface(( width, height ))
+
+    # Set map
+    def set_map(self, map):
+        self.map = map
+        tileSize = self.width // self.map.width
+        self.camera = Camera((self.map.width * tileSize) // 2, (self.map.height * tileSize) // 2, self.game.tilesImage, tileSize, self.game.vehiclesImage)
+
+    # Draw image
+    def draw(self, surface):
+        # Draw background
+        self.surface.fill(Color.DARK)
+
+        # Draw the map
+        self.map.draw(self.surface, self.camera)
+
+        # Draw the vehicles
+        if self.vehicles != None:
+            for vehicle in self.vehicles:
+                vehicle.draw(self.surface, self.camera)
+
+        # Draw surface
+        surface.blit(self.surface, ( self.x, self.y ))
+
 # The vehicle viewport widget class
 class VehicleViewport:
     def __init__(self, game, vehicle, x, y, width, height, map, vehicles):
@@ -195,10 +228,11 @@ class VehicleViewport:
         self.map = map
         self.vehicles = vehicles
         self.surface = pygame.Surface(( width, height ))
+        self.camera = Camera(self.vehicle.x, self.vehicle.y, self.game.tilesImage, Config.TILE_SPRITE_SIZE // 2, self.game.vehiclesImage)
 
         # Create vehicle viewport widgets
         self.widgets = []
-        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 0, height - 24 - 24, width, 24, game.textFont, Color.BLACK)
+        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
 
     def handle_event(self, event):
@@ -248,15 +282,16 @@ class VehicleViewport:
         # Clear the surface
         self.surface.fill(Color.DARK)
 
-        # Create camera
-        camera = Camera(self.vehicle.x, self.vehicle.y)
+        # Update camera
+        self.camera.x = self.vehicle.x
+        self.camera.y = self.vehicle.y
 
         # Draw the map to surface
-        self.map.draw(self.surface, camera)
+        self.map.draw(self.surface, self.camera)
 
         # Draw all the vehicles to surface
         for vehicle in self.vehicles:
-            vehicle.draw(self.surface, camera)
+            vehicle.draw(self.surface, self.camera)
 
         # Update speed label
         self.speedLabel.set_text('Speed: %d km/h' % (self.vehicle.velocity / Config.PIXELS_PER_METER * 3.6))
@@ -366,26 +401,25 @@ class MapEditor:
     # Create map editor
     def __init__(self, game, map, x, y, width, height, tool):
         self.game = game
-        self.set_map(map)
+        self.map = map
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.camera = Camera()
         self.center_camera()
-
         self.tool = tool
         self.mouseDown = False
-
-    # Set map
-    def set_map(self, map):
-        self.map = map
-        map.set_tile_size(Config.EDITOR_TILE_SIZE)
+        self.surface = pygame.Surface(( width, height ))
 
     # Center camera
     def center_camera(self):
-        self.camera.x = self.map.startX * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2
-        self.camera.y = self.map.startY * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2
+        self.camera = Camera(
+            self.map.startX * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            self.map.startY * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            self.game.tilesImage,
+            Config.EDITOR_TILE_SIZE,
+            self.game.vehiclesImage
+        )
 
     # Use tool
     def use_tool(self, mouseX, mouseY):
@@ -473,7 +507,10 @@ class MapEditor:
     # Draw map editor
     def draw(self, surface):
         # Draw background
-        surface.fill(Color.DARK)
+        self.surface.fill(Color.DARK)
 
         # Draw the map
-        self.map.draw(surface, self.camera)
+        self.map.draw(self.surface, self.camera)
+
+        # Draw surface
+        surface.blit(self.surface, ( self.x, self.y ))
