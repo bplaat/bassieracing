@@ -159,10 +159,10 @@ class Map:
         for y in range(height):
             for x in range(width):
                 self.terrain[y][x] = self.generate_terrain_tile(x, y)
+        self.blendTerrain()
 
         self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
-        self.track[self.startY][self.startX] = 2
-        self.track[self.startY + 1][self.startX] = 2
+        self.blendTrack()
 
     # Create map by loading a JSON string
     @staticmethod
@@ -190,7 +190,9 @@ class Map:
         map.startAngle = math.radians(data['start']['angle'])
 
         map.terrain = data['terrain']
+        map.blendTerrain()
         map.track = data['track']
+        map.blendTrack()
 
         return map
 
@@ -199,15 +201,6 @@ class Map:
     def load_from_file(file_path):
         with open(file_path, 'r') as file:
             return Map.load_from_string(file.read())
-
-    # Generate terrain tile
-    def generate_terrain_tile(self, x, y):
-        n = self.noise.noise((x + (self.noiseX - self.width // 2)) / 20, (y + (self.noiseY - self.height // 2)) / 20, 2)
-        if n > 0.2:
-            return 2
-        if n > 0.075:
-            return 1
-        return 0
 
     # Save map to file
     def save_to_file(self, file_path):
@@ -236,6 +229,125 @@ class Map:
             }
             file.write(json.dumps(data, separators=(',', ':')) + '\n')
 
+    # Generate terrain tile
+    def generate_terrain_tile(self, x, y):
+        n = self.noise.noise((x + (self.noiseX - self.width // 2)) / 20, (y + (self.noiseY - self.height // 2)) / 20, 2)
+        if n > 0.2:
+            return 2
+        if n > 0.075:
+            return 1
+        return 0
+
+    # Blend terrain
+    def blendTerrain(self):
+        self.blendedTerrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
+        for y in range(self.height):
+            for x in range(self.width):
+                # Grass terrain tile
+                if self.terrain[y][x] == 0:
+                    # Dirt 1/4 corner
+                    if (x != 0 and self.terrain[y][x - 1] == 1) and (y != 0 and self.terrain[y - 1][x] == 1):
+                        self.blendedTerrain[y][x] = 9
+                    elif (x != self.width - 1 and self.terrain[y][x + 1] == 1) and (y != 0 and self.terrain[y - 1][x] == 1):
+                        self.blendedTerrain[y][x] = 10
+                    elif (x != 0 and self.terrain[y][x - 1] == 1) and (y != self.height - 1 and self.terrain[y + 1][x] == 1):
+                        self.blendedTerrain[y][x] = 11
+                    elif (x != self.width - 1 and self.terrain[y][x + 1] == 1) and (y != self.height - 1 and self.terrain[y + 1][x] == 1):
+                        self.blendedTerrain[y][x] = 12
+
+                    # Dirt border
+                    elif y != 0 and self.terrain[y - 1][x] == 1:
+                        self.blendedTerrain[y][x] = 1
+                    elif y != self.height - 1 and self.terrain[y + 1][x] == 1:
+                        self.blendedTerrain[y][x] = 2
+                    elif x != 0 and self.terrain[y][x - 1] == 1:
+                        self.blendedTerrain[y][x] = 3
+                    elif x != self.width - 1 and self.terrain[y][x + 1] == 1:
+                        self.blendedTerrain[y][x] = 4
+
+                    # Dirt 3/4 corner
+                    elif x != 0 and y != 0 and self.terrain[y - 1][x - 1] == 1:
+                        self.blendedTerrain[y][x] = 5
+                    elif x != self.width - 1 and y != 0 and self.terrain[y - 1][x + 1] == 1:
+                        self.blendedTerrain[y][x] = 6
+                    elif x != 0 and y != self.height - 1 and self.terrain[y + 1][x - 1] == 1:
+                        self.blendedTerrain[y][x] = 7
+                    elif x != self.width - 1 and y != self.height - 1 and self.terrain[y + 1][x + 1] == 1:
+                        self.blendedTerrain[y][x] = 8
+
+                    else:
+                        self.blendedTerrain[y][x] = 0
+
+                # Dirt terrain tile
+                if self.terrain[y][x] == 1:
+                    self.blendedTerrain[y][x] = 13
+
+                # Sand terrain tile
+                if self.terrain[y][x] == 2:
+                    self.blendedTerrain[y][x] = 14
+
+    # Blend track
+    def blendTrack(self):
+        self.blendedTrack = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
+        for y in range(self.height):
+            for x in range(self.width):
+                # Asphalt track tile
+                if self.track[y][x] == 1:
+                    # Closed
+                    if (y == 0 or self.track[y - 1][x] == 0) and (y == self.height - 1 or self.track[y + 1][x] == 0):
+                        self.blendedTrack[y][x] = 10
+                    elif (x == 0 or self.track[y][x - 1] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
+                        self.blendedTrack[y][x] = 11
+
+                    # Corners
+                    elif (y == 0 or self.track[y - 1][x] == 0) and (x == 0 or self.track[y][x - 1] == 0):
+                        self.blendedTrack[y][x] = 6
+                    elif (y == 0 or self.track[y - 1][x] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
+                        self.blendedTrack[y][x] = 7
+                    elif (y == self.height - 1 or self.track[y + 1][x] == 0) and (x == 0 or self.track[y][x - 1] == 0):
+                        self.blendedTrack[y][x] = 8
+                    elif (y == self.height - 1 or self.track[y + 1][x] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
+                        self.blendedTrack[y][x] = 9
+
+                    # Straight border
+                    elif y == 0 or self.track[y - 1][x] == 0:
+                        self.blendedTrack[y][x] = 2
+                    elif y == self.height - 1 or self.track[y + 1][x] == 0:
+                        self.blendedTrack[y][x] = 3
+                    elif x == 0 or self.track[y][x - 1] == 0:
+                        self.blendedTrack[y][x] = 4
+                    elif x == self.width - 1 or self.track[y][x + 1] == 0:
+                        self.blendedTrack[y][x] = 5
+
+                    else:
+                        self.blendedTrack[y][x] = 1
+
+                # Finish track tile
+                if self.track[y][x] == 2:
+                    # Open
+                    if (y != 0 and self.track[y - 1][x] == 2) and (y != self.height - 1 and self.track[y + 1][x] == 2):
+                        self.blendedTrack[y][x] = 12
+                    elif (x != 0 and self.track[y][x - 1] == 2) and (x != self.width - 1 and self.track[y][x + 1] == 2):
+                        self.blendedTrack[y][x] = 13
+
+                    # Straight border
+                    elif (y == 0 or self.track[y - 1][x] == 0) and (y != self.height - 1 and self.track[y + 1][x] == 2):
+                        self.blendedTrack[y][x] = 14
+                    elif (y == self.height - 1 or self.track[y + 1][x] == 0) and (y != 0 and self.track[y - 1][x] == 2):
+                        self.blendedTrack[y][x] = 15
+                    elif (x == 0 or self.track[y][x - 1] == 0) and (x != self.width - 1 and self.track[y][x + 1] == 2):
+                        self.blendedTrack[y][x] = 16
+                    elif (x == self.width - 1 or self.track[y][x + 1] == 0) and (x != 0 and self.track[y][x - 1] == 2):
+                        self.blendedTrack[y][x] = 17
+
+                    # Closed
+                    elif (y == 0 or self.track[y - 1][x] == 0) and (y == self.height - 1 or self.track[y + 1][x] == 0):
+                        self.blendedTrack[y][x] = 18
+                    elif (x == 0 or self.track[y][x - 1] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
+                        self.blendedTrack[y][x] = 19
+
+                    else:
+                        self.blendedTrack[y][x] = 13
     # Resize map
     def resize(self, width, height):
         old_width = self.width
@@ -257,12 +369,14 @@ class Map:
                         self.terrain[y][x] = old_terrain[y - dh][x - dw]
                     else:
                         self.terrain[y][x] = self.generate_terrain_tile(x, y)
+            self.blendTerrain()
 
             self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
             for y in range(height):
                 for x in range(width):
                     if x - dw >= 0 and y - dh >= 0 and x - dw < old_width and y - dh < old_height:
                         self.track[y][x] = old_track[y - dh][x - dw]
+            self.blendTrack()
 
             self.startX += dw
             self.startY += dh
@@ -276,11 +390,13 @@ class Map:
             for y in range(height):
                 for x in range(width):
                     self.terrain[y][x] = old_terrain[dh + y][dw + x]
+            self.blendTerrain()
 
             self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
             for y in range(height):
                 for x in range(width):
                     self.track[y][x] = old_track[dh + y][dw + x]
+            self.blendTrack()
 
             self.startX -= dw
             self.startY -= dh
@@ -290,7 +406,7 @@ class Map:
         # Draw terrain tiles to surface
         for y in range(self.height):
             for x in range(self.width):
-                tileType = terrainTiles[self.terrain[y][x]]
+                tileType = terrainTiles[self.blendedTerrain[y][x]]
                 tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
                 ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
                 if tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and tx < surface.get_width() and ty < surface.get_height():
@@ -308,9 +424,9 @@ class Map:
         # Draw track tiles to surface
         for y in range(self.height):
             for x in range(self.width):
-                trackId = self.track[y][x]
+                trackId = self.blendedTrack[y][x]
                 if trackId != 0:
-                    tileType = trackTiles[trackId - 1]
+                    tileType = trackTiles[trackId]
                     tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
                     ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
                     if (

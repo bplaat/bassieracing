@@ -21,13 +21,17 @@ class Game:
         pygame.mixer.pre_init(44100, 16, 1, 512)
         pygame.init()
 
-        # Create the window
-        os.environ['SDL_VIDEO_CENTERED'] = '1'
-        self.screen = pygame.display.set_mode((Config.WIDTH, Config.HEIGHT))
-        pygame.display.set_caption('BassieRacing')
-
         # Set running
         self.running = True
+
+        # Init the window
+        pygame.display.set_caption('BassieRacing')
+        self.width = Config.WIDTH
+        self.height = Config.HEIGHT
+        self.fullscreen = False
+        os.environ['SDL_VIDEO_CENTERED'] = '1'
+        self.screen = pygame.display.set_mode(( self.width, self.height ), pygame.DOUBLEBUF | pygame.RESIZABLE)
+        del os.environ['SDL_VIDEO_CENTERED']
 
         # Load fonts
         font_path = 'assets/fonts/PressStart2P-Regular.ttf'
@@ -48,6 +52,12 @@ class Game:
 
     # Handle user events
     def handle_event(self, event):
+        # Handle window resize events
+        if event.type == pygame.VIDEORESIZE:
+            self.width = event.w
+            self.height = event.h
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF| pygame.RESIZABLE)
+
         # Send event to current page
         self.page.handle_event(event)
 

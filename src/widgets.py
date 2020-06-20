@@ -99,7 +99,8 @@ class Button(Label):
 # The combobox widget class
 class ComboBox(Button):
     # Create combobox
-    def __init__(self, options, selectedItem, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+    def __init__(self, game, options, selectedItem, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+        self.game = game
         self.options = options
         self.selectedItem = selectedItem
         Button.__init__(self, options[self.selectedItem] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
@@ -111,7 +112,7 @@ class ComboBox(Button):
 
         # Create combobox widgets
         ry = y + height
-        if len(options) * height > Config.HEIGHT - (y + height):
+        if len(options) * height > game.height - (y + height):
             ry = y - len(options) * height
 
         self.widgets = []
@@ -212,16 +213,16 @@ class MiniMap:
         self.game = game
         self.vehicles = vehicles
         self.set_map(map)
-        self.surface = pygame.Surface(( width, height ))
+        self.surface = pygame.Surface(( width, height ), pygame.SRCALPHA)
 
     # Set map
     def set_map(self, map):
         self.map = map
-        self.tileSize = self.width // self.map.width
+        self.tileSize = self.width // map.width
         self.vehicleScale = 0.2
         self.camera = Camera(
-            (self.map.width * self.tileSize) / 2,
-            (self.map.height * self.tileSize) / 2,
+            (map.width * self.tileSize) / 2,
+            (map.height * self.tileSize) / 2,
             self.game.tilesImage, self.tileSize,
             self.game.vehiclesImage, self.vehicleScale
         )
@@ -235,9 +236,6 @@ class MiniMap:
 
     # Draw mini map
     def draw(self, surface):
-        # Draw background
-        self.surface.fill(Color.DARK)
-
         # Draw the map
         self.map.draw(self.surface, self.camera)
 
@@ -270,10 +268,10 @@ class MapSelector:
         self.maps = [ Map.load_from_file(mapPath) for mapPath in self.mapPaths ]
 
         self.selectedMapIndex = random.randint(0, len(self.maps) - 1)
-        self.update_widgets()
+        self.create_widgets()
 
-    # Update map selector widgets
-    def update_widgets(self):
+    # Create map selector widgets
+    def create_widgets(self):
         self.selectedMap = self.maps[self.selectedMapIndex]
 
         self.widgets = []
@@ -293,9 +291,14 @@ class MapSelector:
                 self.widgets.append(Rect(rx, self.y, item_width, self.height, Color.WHITE))
 
             color = Color.BLACK if i == 1 else Color.WHITE
-            self.widgets.append(MiniMap(self.game, map, None, rx + (item_width - 240) / 2, self.y + 64, 240, 240))
-            self.widgets.append(Label(map.name, rx, self.y + 64 + 240 + 24, item_width, 32, self.game.textFont, color))
-            self.widgets.append(Label('Size: %dx%d' % (map.width, map.height), rx, self.y + 64 + 240 + 24 + 32 + 8, item_width, 32, self.game.smallFont, color))
+
+            minmap_size = self.game.width // 5
+            ry = self.y + (self.height - (minmap_size + 32 + 32 + 24 + 24)) // 2
+            self.widgets.append(MiniMap(self.game, map, None, rx + (item_width - minmap_size) / 2, ry, minmap_size, minmap_size))
+            ry += minmap_size + 32
+            self.widgets.append(Label(map.name, rx, ry, item_width, 32, self.game.textFont, color))
+            ry += 32 + 24
+            self.widgets.append(Label('Size: %dx%d' % (map.width, map.height), rx, ry, item_width, 24, self.game.smallFont, color))
             rx += item_width
 
         self.widgets.append(Button('<', self.x, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
@@ -309,12 +312,12 @@ class MapSelector:
             # Add and select it
             self.maps.append(Map.load_from_file(file_path))
             self.selectedMapIndex = len(self.maps) - 1
-            self.update_widgets()
+            self.create_widgets()
 
         # Just selected the map
         else:
             self.selectedMapIndex = self.mapPaths.index(file_path)
-            self.update_widgets()
+            self.create_widgets()
 
     # Handle rotate left button click
     def rotate_left_button_clicked(self):
@@ -322,7 +325,7 @@ class MapSelector:
             self.selectedMapIndex = len(self.maps) - 1
         else:
             self.selectedMapIndex -= 1
-        self.update_widgets()
+        self.create_widgets()
 
     # Handle rotate right button click
     def rotate_right_button_clicked(self):
@@ -330,7 +333,7 @@ class MapSelector:
             self.selectedMapIndex = 0
         else:
             self.selectedMapIndex += 1
-        self.update_widgets()
+        self.create_widgets()
 
     # Handle map selector events
     def handle_event(self, event):
@@ -360,7 +363,7 @@ class VehicleSelector:
         # Create vehicle selector widget widgets
         self.widgets = []
 
-        ry = y + 32
+        ry = y + (height - (128 + 32 + 48 + (32 + 16) * 3)) // 2
         self.vehicleImage = Image(None, x, ry, width, 128)
         self.widgets.append(self.vehicleImage)
         ry += 128 + 32
@@ -556,27 +559,35 @@ class MapEditor:
 
     # Use tool
     def use_tool(self, mouseX, mouseY):
-        tileX = math.floor((mouseX + self.camera.x - Config.WIDTH / 2) / Config.EDITOR_TILE_SIZE)
-        tileY = math.floor((mouseY + self.camera.y - Config.HEIGHT / 2) / Config.EDITOR_TILE_SIZE)
+        tileX = math.floor((mouseX + self.camera.x - self.game.width / 2) / Config.EDITOR_TILE_SIZE)
+        tileY = math.floor((mouseY + self.camera.y - self.game.height / 2) / Config.EDITOR_TILE_SIZE)
 
         if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
             if self.tool == MapEditor.GRASS_BRUSH:
                 self.map.terrain[tileY][tileX] = 0
+                self.map.blendTerrain()
 
             if self.tool == MapEditor.DIRT_BRUSH:
                 self.map.terrain[tileY][tileX] = 1
+                self.map.blendTerrain()
 
             if self.tool == MapEditor.SAND_BRUSH:
                 self.map.terrain[tileY][tileX] = 2
+                self.map.blendTerrain()
 
             if self.tool == MapEditor.ASPHALT_BRUSH:
                 self.map.track[tileY][tileX] = 1
+                self.map.blendTrack()
 
             if self.tool == MapEditor.FINISH_BRUSH:
                 self.map.track[tileY][tileX] = 2
+                self.map.startX = tileX
+                self.map.startY = tileY
+                self.map.blendTrack()
 
             if self.tool == MapEditor.TRACK_ERASER:
                 self.map.track[tileY][tileX] = 0
+                self.map.blendTrack()
 
     # Handle page events
     def handle_event(self, event):
@@ -595,9 +606,9 @@ class MapEditor:
                 self.use_tool(mouseX, mouseY)
             else:
                 self.camera.movingUp = mouseY >= 2 and mouseY < Config.EDITOR_CAMERA_BORDER
-                self.camera.movingDown = mouseY >= Config.HEIGHT - Config.EDITOR_CAMERA_BORDER and mouseY < Config.HEIGHT - 2
+                self.camera.movingDown = mouseY >= self.game.height - Config.EDITOR_CAMERA_BORDER and mouseY < self.game.height - 2
                 self.camera.movingLeft = mouseX >= 2 and mouseX < Config.EDITOR_CAMERA_BORDER
-                self.camera.movingRight = mouseX >= Config.WIDTH - Config.EDITOR_CAMERA_BORDER and mouseX < Config.WIDTH - 2
+                self.camera.movingRight = mouseX >= self.game.width - Config.EDITOR_CAMERA_BORDER and mouseX < self.game.width - 2
 
             return True
 

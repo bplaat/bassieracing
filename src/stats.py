@@ -104,36 +104,59 @@ vehicles = [
 
 # The terrain tiles data
 terrainTiles = [
-    # Grass
-    {
-        'x': 1408,
-        'y': 1664
-    },
+    # Grass tiles
+    { 'x': 1408, 'y': 1664 }, # 0 = Grass
+    { 'x': 1408, 'y': 1408 }, # 1 = Grass Dirt Top
+    { 'x': 1408, 'y': 1920 }, # 2 = Grass Dirt Bottom
+    { 'x': 1536, 'y': 384 },  # 3 = Grass Dirt Left
+    { 'x': 1536, 'y': 128 },  # 4 = Grass Dirt Right
 
-    # Dirt
-    {
-        'x': 0,
-        'y': 256
-    },
+    { 'x': 1408, 'y': 2176 }, # 5 = Grass 3/4 Dirt Corner Top Left
+    { 'x': 1536, 'y': 0 },    # 6 = Grass 3/4 Dirt Corner Top Right
+    { 'x': 1536, 'y': 512 },  # 7 = Grass 3/4 Dirt Corner Bottom Left
+    { 'x': 1536, 'y': 640 },  # 8 = Grass 3/4 Dirt Corner Bottom Right
 
-    # Sand
-    {
-        'x': 1280,
-        'y': 2048
-    }
+    { 'x': 1408, 'y': 1536 }, # 9 = Grass 1/4 Dirt Corner Top Left
+    { 'x': 1408, 'y': 1280 }, # 10 = Grass 1/4 Dirt Corner Top Right
+    { 'x': 1408, 'y': 2048 }, # 11 = Grass 1/4 Dirt Corner Bottom Left
+    { 'x': 1408, 'y': 1792 }, # 12 = Grass 1/4 Dirt Corner Bottom Right
+
+    # Dirt tiles
+    { 'x': 0, 'y': 256 },     # 13 = Dirt
+
+    # Sand tiles
+    { 'x': 1280, 'y': 2048 }  # 14 = Sand
 ]
 
 # The track tiles data
 trackTiles = [
-    # Asphalt
-    {
-        'x': 512,
-        'y': 1280
-    },
+    None,
 
-    # Finish
-    {
-        'x': 0,
-        'y': 2048
-    }
+    # Asphalt tiles
+    { 'x': 512, 'y': 1280 }, # 1 = Asphalt Open
+
+    { 'x': 640, 'y': 1280 }, # 2 = Asphalt Top Closed
+    { 'x': 384, 'y': 1280 }, # 3 = Asphalt Bottom Closed
+    { 'x': 512, 'y': 1408 }, # 4 = Asphalt Left Closed
+    { 'x': 512, 'y': 1152 }, # 5 = Asphalt Right Closed
+
+    { 'x': 640, 'y': 1024 }, # 6 = Asphalt Corner Top Left
+    { 'x': 640, 'y': 896 },  # 7 = Asphalt Corner Top Right
+    { 'x': 512, 'y': 1024 }, # 8 = Asphalt Corner Bottom Left
+    { 'x': 512, 'y': 896 },  # 9 = Asphalt Corner Bottom Right
+
+    { 'x': 640, 'y': 1536 }, # 10 = Asphalt Vertical Closed
+    { 'x': 640, 'y': 1664 }, # 11 = Asphalt Horizontal Closed
+
+    # Finish tiles
+    { 'x': 0, 'y': 2048 },   # 12 = Finish Vertical Open
+    { 'x': 128, 'y': 2048 }, # 13 = Finish Horizontal Open
+
+    { 'x': 0, 'y': 2176 },   # 14 = Finish Top Closed
+    { 'x': 0, 'y': 1920 },   # 15 = Finish Bottom Closed
+    { 'x': 128, 'y': 2176 }, # 16 = Finish Left Closed
+    { 'x': 128, 'y': 1920 }, # 17 = Finish Right Closed
+
+    { 'x': 384, 'y': 1024 }, # 18 = Finish Vertical Closed
+    { 'x': 384, 'y': 896 }   # 19 = Finish Horizontal Closed
 ]
