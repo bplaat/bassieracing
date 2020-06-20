@@ -8,17 +8,45 @@ import pygame
 import random
 from stats import *
 
-# The widget class
-class Widget:
-    def __init__(self, x, y, width, height, clickCallback = None, callbackExtra = None):
+# The rect widget class
+class Rect:
+    # Create rect
+    def __init__(self, x, y, width, height, color):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
+        self.color = color
+
+    # Handle rect events
+    def handle_event(self, event):
+        return False
+
+    # Draw rect
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.color, ( self.x, self.y, self.width, self.height ))
+
+# The label widget class
+class Label:
+    # Create label
+    def __init__(self, text, x, y, width, height, font, color, align = TextAlign.CENTER, clickCallback = None, callbackExtra = None):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.font = font
+        self.color = color
+        self.align = align
+        self.set_text(text)
         self.clickCallback = clickCallback
         self.callbackExtra = callbackExtra
 
-    # Handle widget events
+    # Update label text
+    def set_text(self, text):
+        self.text = text
+        self.textSurface = self.font.render(self.text, True, self.color)
+
+    # Handle label events
     def handle_event(self, event):
         # Handle mouse events
         if (
@@ -35,36 +63,6 @@ class Widget:
             return True
 
         return False
-
-    # Draw widget
-    def draw(self, surface):
-        pass
-
-# The rect widget class
-class Rect(Widget):
-    # Create rect
-    def __init__(self, x, y, width, height, color, clickCallback = None, callbackExtra = None):
-        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
-        self.color = color
-
-    # Draw rect
-    def draw(self, surface):
-        pygame.draw.rect(surface, self.color, ( self.x, self.y, self.width, self.height ))
-
-# The label widget class
-class Label(Widget):
-    # Create label
-    def __init__(self, text, x, y, width, height, font, color, align = TextAlign.CENTER, clickCallback = None, callbackExtra = None):
-        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
-        self.font = font
-        self.color = color
-        self.align = align
-        self.set_text(text)
-
-    # Update label text
-    def set_text(self, text):
-        self.text = text
-        self.textSurface = self.font.render(self.text, True, self.color)
 
     # Draw label
     def draw(self, surface):
@@ -117,8 +115,8 @@ class ComboBox(Button):
             ry = y - len(options) * height
 
         self.widgets = []
-        for i in range(len(options)):
-            self.widgets.append(Button(options[i], x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
+        for i, option in enumerate(options):
+            self.widgets.append(Button(option, x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
             ry += height
 
     # Set selected item
@@ -171,10 +169,13 @@ class ComboBox(Button):
                 widget.draw(surface)
 
 # The image widget class
-class Image(Widget):
+class Image:
     # Create image
-    def __init__(self, image, x, y, width, height, clickCallback = None, callbackExtra = None):
-        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
+    def __init__(self, image, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
         self.set_image(image)
 
     # Set image image
@@ -188,6 +189,10 @@ class Image(Widget):
         else:
             raise ValueError('Image is not a file path, a surface or None!')
 
+    # Handle image events
+    def handle_event(self, event):
+        return False
+
     # Draw image
     def draw(self, surface):
         if self.surface != None:
@@ -196,23 +201,39 @@ class Image(Widget):
                 self.y + (self.height - self.surface.get_height()) // 2
             ))
 
-# The minimap widget class
-class MiniMap(Widget):
-    # Create minimap
-    def __init__(self, game, map, vehicles, x, y, width, height, clickCallback = None, callbackExtra = None):
-        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
+# The mini map widget class
+class MiniMap:
+    # Create mini map
+    def __init__(self, game, map, vehicles, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
         self.game = game
-        self.set_map(map)
         self.vehicles = vehicles
+        self.set_map(map)
         self.surface = pygame.Surface(( width, height ))
 
     # Set map
     def set_map(self, map):
         self.map = map
-        tileSize = self.width // self.map.width
-        self.camera = Camera((self.map.width * tileSize) // 2, (self.map.height * tileSize) // 2, self.game.tilesImage, tileSize, self.game.vehiclesImage)
+        self.tileSize = self.width // self.map.width
+        self.vehicleScale = 0.2
+        self.camera = Camera(
+            (self.map.width * self.tileSize) / 2,
+            (self.map.height * self.tileSize) / 2,
+            self.game.tilesImage, self.tileSize,
+            self.game.vehiclesImage, self.vehicleScale
+        )
+        if self.vehicles != None:
+            for vehicle in self.vehicles:
+                vehicle.crop(self.camera)
 
-    # Draw image
+    # Handle mini map events
+    def handle_event(self, event):
+        return False
+
+    # Draw mini map
     def draw(self, surface):
         # Draw background
         self.surface.fill(Color.DARK)
@@ -220,14 +241,21 @@ class MiniMap(Widget):
         # Draw the map
         self.map.draw(self.surface, self.camera)
 
-        # Draw the vehicles
+        # Draw the vehicles if given
         if self.vehicles != None:
+            # TODO
             for vehicle in self.vehicles:
-                vehicle.draw(self.surface, self.camera)
+                rotatedVehicleImage = pygame.transform.rotate(self.camera.vehicleImageCache[vehicle.id], math.degrees(vehicle.angle))
+                x = math.floor((vehicle.x / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_width() / 2 - (self.camera.x - self.width / 2))
+                y = math.floor((vehicle.y / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_height() / 2 - (self.camera.y - self.height / 2))
+                if (
+                    x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
+                    x - rotatedVehicleImage.get_width() < self.width and y - rotatedVehicleImage.get_height() < self.height
+                ):
+                    self.surface.blit(rotatedVehicleImage, ( x, y ))
 
         # Draw surface
         surface.blit(self.surface, ( self.x, self.y ))
-
 
 # The map selector widget
 class MapSelector:
@@ -241,7 +269,7 @@ class MapSelector:
         self.mapPaths = [ os.path.abspath('assets/maps/' + filename) for filename in os.listdir('assets/maps/') if os.path.isfile('assets/maps/' + filename) ]
         self.maps = [ Map.load_from_file(mapPath) for mapPath in self.mapPaths ]
 
-        self.selectedMapIndex = 0
+        self.selectedMapIndex = random.randint(0, len(self.maps) - 1)
         self.update_widgets()
 
     # Update map selector widgets
@@ -417,6 +445,8 @@ class VehicleViewport:
         self.vehicles = vehicles
         self.surface = pygame.Surface(( width, height ))
         self.camera = Camera(self.vehicle.x, self.vehicle.y, self.game.tilesImage, Config.TILE_SPRITE_SIZE, self.game.vehiclesImage)
+        for vehicle in self.vehicles:
+            vehicle.crop(self.camera)
 
         # Create vehicle viewport widgets
         self.widgets = []

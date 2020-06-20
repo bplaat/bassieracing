@@ -66,6 +66,7 @@ class Vehicle:
     TURNING_LEFT = 1
     TURNING_RIGHT = 2
 
+    # Create vehicle
     def __init__(self, id, vehicleType, color, x, y, angle):
         self.id = id
         self.vehicleType = vehicleType
@@ -81,6 +82,7 @@ class Vehicle:
         self.moving = Vehicle.NOT_MOVING
         self.turning = Vehicle.NOT_TURNING
 
+    # Update vehicle
     def update(self, delta):
         # Handle turning
         if self.turning == Vehicle.TURNING_LEFT:
@@ -112,24 +114,25 @@ class Vehicle:
         self.x -= self.velocity * math.sin(self.angle) * delta
         self.y -= self.velocity * math.cos(self.angle) * delta
 
-    def draw(self, surface, camera):
-        # Crop vehicle image to camara cache if not present
-        if camera.vehicleImageCache[self.id] == None:
-            camera.vehicleImageCache[self.id] = pygame.Surface(
-                ( self.vehicleType['width'], self.vehicleType['height'] ),
-                pygame.SRCALPHA
-            )
-            camera.vehicleImageCache[self.id].blit(camera.vehiclesImage, ( 0, 0 ),  (
-                math.floor(self.vehicleType['colors'][self.color]['x'] * camera.vehicleScale),
-                math.floor(self.vehicleType['colors'][self.color]['y'] * camera.vehicleScale),
-                math.floor(self.vehicleType['width'] * camera.vehicleScale),
-                math.floor(self.vehicleType['height'] * camera.vehicleScale)
-            ))
+    # Crop the right vehicle image and save in camera vehicle image cache
+    def crop(self, camera):
+        camera.vehicleImageCache[self.id] = pygame.Surface(
+            ( self.vehicleType['width'], self.vehicleType['height'] ),
+            pygame.SRCALPHA
+        )
+        camera.vehicleImageCache[self.id].blit(camera.vehiclesImage, ( 0, 0 ),  (
+            math.floor(self.vehicleType['colors'][self.color]['x'] * camera.vehicleScale),
+            math.floor(self.vehicleType['colors'][self.color]['y'] * camera.vehicleScale),
+            math.floor(self.vehicleType['width'] * camera.vehicleScale),
+            math.floor(self.vehicleType['height'] * camera.vehicleScale)
+        ))
 
-        # Rotate vehicle and draw
+    # Draw vehicle
+    def draw(self, surface, camera):
+        # Rotate vehicle image and draw
         rotatedVehicleImage = pygame.transform.rotate(camera.vehicleImageCache[self.id], math.degrees(self.angle))
-        x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() // 2))
-        y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() // 2))
+        x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() / 2))
+        y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() / 2))
         if (
             x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
             x - rotatedVehicleImage.get_width() < surface.get_width() and y - rotatedVehicleImage.get_height() < surface.get_height()
@@ -231,7 +234,7 @@ class Map:
                 'terrain': self.terrain,
                 'track': self.track
             }
-            json.dump(data, file, separators=(',', ':'))
+            file.write(json.dumps(data, separators=(',', ':')) + '\n')
 
     # Resize map
     def resize(self, width, height):

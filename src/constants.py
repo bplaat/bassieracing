@@ -4,7 +4,7 @@
 class Config:
     # App constants
     NAME = 'BassieRacing'
-    VERSION = '0.4.0'
+    VERSION = '0.5.0'
 
     # Window constants
     WIDTH = 1280

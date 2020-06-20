@@ -247,7 +247,7 @@ class EditorPage(Page):
 
         self.widgets.append(Button('Back', Config.WIDTH - (16 + 128), 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
-        self.sizeComboBox = ComboBox([ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], Config.MAP_SIZES[i], Config.MAP_SIZES[i]) for i in range(len(Config.MAP_SIZES)) ], 1, 16, Config.HEIGHT - 64 - 16, (Config.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
+        self.sizeComboBox = ComboBox([ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ], 1, 16, Config.HEIGHT - 64 - 16, (Config.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
         self.widgets.append(self.sizeComboBox)
         self.brushComboBox = ComboBox(MapEditor.TOOL_LABELS, 3, Config.WIDTH // 2 + 8, Config.HEIGHT - 64 - 16, (Config.WIDTH - 16 * 3) // 2, 64, game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
         self.widgets.append(self.brushComboBox)
@@ -258,9 +258,9 @@ class EditorPage(Page):
 
     # New button clicked
     def new_button_clicked(self):
-        for i in range(len(Config.MAP_SIZES)):
+        for i, size in enumerate(Config.MAP_SIZES):
             if i == self.sizeComboBox.selectedItem:
-                self.map = Map('Custom Map', Config.MAP_SIZES[i], Config.MAP_SIZES[i])
+                self.map = Map('Custom Map', size, size)
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
                 return
@@ -280,8 +280,8 @@ class EditorPage(Page):
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
 
-                for i in range(len(Config.MAP_SIZES)):
-                    if Config.MAP_SIZES[i] == self.map.width:
+                for i, size in enumerate(Config.MAP_SIZES):
+                    if size == self.map.width:
                         self.sizeComboBox.set_selected(i)
                         return
 
@@ -300,15 +300,15 @@ class EditorPage(Page):
 
     # Size combobox changed
     def size_combobox_changed(self, selectedItem):
-        for i in range(len(Config.MAP_SIZES)):
+        for i, size in enumerate(Config.MAP_SIZES):
             if selectedItem == i:
-                self.map.resize(Config.MAP_SIZES[i], Config.MAP_SIZES[i])
+                self.map.resize(size, size)
                 self.mapEditor.center_camera()
                 break
 
     # Brush combobox changed
     def brush_combobox_changed(self, selectedItem):
-        for i in range(len(MapEditor.TOOL_LABELS)):
+        for i, label in enumerate(MapEditor.TOOL_LABELS):
             if selectedItem == i:
                 self.mapEditor.tool = i
                 break
