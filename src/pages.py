@@ -136,13 +136,12 @@ class SelectMapPage(Page):
     def __init__(self, game):
         Page.__init__(self, game)
 
-        self.map = Map.load_from_file('assets/maps/classic-eight.json')
-
         # Create select map page widgets
         self.widgets.append(Label('Select a map to race', 0, 24, Config.WIDTH, 96, game.titleFont, Color.WHITE))
-        self.widgets.append(MiniMap(game, self.map, None, 100, 100, 320, 320))
+        self.mapSelector = MapSelector(game, 16, 24 + 96 + 16, Config.WIDTH - 16 - 16, Config.HEIGHT - (24 + 96 + 16) - (48 + 64 + 16))
+        self.widgets.append(self.mapSelector)
         self.widgets.append(Button('Back', 16, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
-        self.widgets.append(Button('Load custom map', (Config.WIDTH - 400) // 2, Config.HEIGHT - 64 - 16, 400, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
+        self.widgets.append(Button('Load custom map', (Config.WIDTH - 420) // 2, Config.HEIGHT - 64 - 16, 420, 64, game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
         self.widgets.append(Button('Continue', Config.WIDTH - 16 - 240, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
     # Back button clicked
@@ -151,11 +150,13 @@ class SelectMapPage(Page):
 
     # Load button clicked
     def load_button_clicked(self):
-        pass
+        file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
+        if file_path != '':
+            self.mapSelector.load_map(file_path)
 
     # Continue button clicked
     def continue_button_clicked(self):
-        self.game.page = SelectVehiclePage(self.game, self.map)
+        self.game.page = SelectVehiclePage(self.game, self.mapSelector.selectedMap)
 
 # The select vehicle page class
 class SelectVehiclePage(Page):
@@ -167,9 +168,9 @@ class SelectVehiclePage(Page):
 
         # Create select vehicle page widgets
         self.widgets.append(Label('Select both your vehicle', 0, 24, Config.WIDTH, 96, game.titleFont, Color.WHITE))
-        self.leftVehicleSelector = VehicleSelector(game, 16, 32 + 96 + 16, Config.WIDTH // 2 - (16 + 16), Config.HEIGHT - (32 + 96 + 16) - (48 + 64 + 16), 0)
+        self.leftVehicleSelector = VehicleSelector(game, 16, 24 + 96 + 16, Config.WIDTH // 2 - (16 + 16), Config.HEIGHT - (24 + 96 + 16) - (48 + 64 + 16), 0)
         self.widgets.append(self.leftVehicleSelector)
-        self.rightVehicleSelector = VehicleSelector(game, 16 + Config.WIDTH // 2, 32 + 96 + 16, Config.WIDTH // 2 - (16 + 16), Config.HEIGHT - (32 + 96 + 16) - (48 + 64 + 16), 1)
+        self.rightVehicleSelector = VehicleSelector(game, 16 + Config.WIDTH // 2, 24 + 96 + 16, Config.WIDTH // 2 - (16 + 16), Config.HEIGHT - (24 + 96 + 16) - (48 + 64 + 16), 1)
         self.widgets.append(self.rightVehicleSelector)
         self.widgets.append(Button('Back', 16, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button('Race!', Config.WIDTH - 16 - 240, Config.HEIGHT - 64 - 16, 240, 64, game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
@@ -188,29 +189,34 @@ class GamePage(Page):
     def __init__(self, game, map, leftVehicleType, rightVehicleType):
         Page.__init__(self, game)
 
+        # Set background color
+        self.backgroundColor = Color.BLACK
+
+        # Set selected map
         self.map = map
 
         # Init the vehicles
         self.vehicles = []
 
         leftVehicle = Vehicle(0, leftVehicleType, 0,
-            self.map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-            self.map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-            self.map.startAngle
+            map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+            map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+            map.startAngle
         )
         self.vehicles.append(leftVehicle)
 
         rightVehicle = Vehicle(1, rightVehicleType, 1,
-            self.map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-            self.map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * 1.5,
-            self.map.startAngle
+            map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+            map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * 1.5,
+            map.startAngle
         )
         self.vehicles.append(rightVehicle)
 
         # Create game page widgets
-        self.widgets.append(VehicleViewport(game, leftVehicle, 0, 0, Config.WIDTH // 2, Config.HEIGHT, self.map, self.vehicles))
-        self.widgets.append(VehicleViewport(game, rightVehicle, Config.WIDTH // 2, 0, Config.WIDTH // 2, Config.HEIGHT, self.map, self.vehicles))
-        self.widgets.append(MiniMap(game, self.map, self.vehicles, (Config.WIDTH - 256) // 2, 0, 256, 256))
+        self.widgets.append(VehicleViewport(game, leftVehicle, 0, 0, Config.WIDTH // 2 - 1, Config.HEIGHT, map, self.vehicles))
+        self.widgets.append(VehicleViewport(game, rightVehicle, Config.WIDTH // 2 + 1, 0, Config.WIDTH // 2 - 1, Config.HEIGHT, map, self.vehicles))
+        self.widgets.append(Rect((Config.WIDTH - 240) // 2 - 2, 8, 244, 244, Color.BLACK))
+        self.widgets.append(MiniMap(game, map, self.vehicles, (Config.WIDTH - 240) // 2, 10, 240, 240))
         self.widgets.append(Button('Back', Config.WIDTH - 16 - 128, 16, 128, 64, game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked

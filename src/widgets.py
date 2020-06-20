@@ -3,6 +3,7 @@
 # Import modules
 from constants import *
 from objects import *
+import os
 import pygame
 import random
 from stats import *
@@ -38,6 +39,17 @@ class Widget:
     # Draw widget
     def draw(self, surface):
         pass
+
+# The rect widget class
+class Rect(Widget):
+    # Create rect
+    def __init__(self, x, y, width, height, color, clickCallback = None, callbackExtra = None):
+        Widget.__init__(self, x, y, width, height, clickCallback, callbackExtra)
+        self.color = color
+
+    # Draw rect
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.color, ( self.x, self.y, self.width, self.height ))
 
 # The label widget class
 class Label(Widget):
@@ -216,6 +228,182 @@ class MiniMap(Widget):
         # Draw surface
         surface.blit(self.surface, ( self.x, self.y ))
 
+
+# The map selector widget
+class MapSelector:
+    def __init__(self, game, x, y, width, height):
+        self.game = game
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+        self.mapPaths = [ os.path.abspath('assets/maps/' + filename) for filename in os.listdir('assets/maps/') if os.path.isfile('assets/maps/' + filename) ]
+        self.maps = [ Map.load_from_file(mapPath) for mapPath in self.mapPaths ]
+
+        self.selectedMapIndex = 0
+        self.update_widgets()
+
+    # Update map selector widgets
+    def update_widgets(self):
+        self.selectedMap = self.maps[self.selectedMapIndex]
+
+        self.widgets = []
+
+        item_width = (self.width - 48 - 48) // 3
+        rx = self.x + 48
+        for i in range(3):
+            position = (self.selectedMapIndex - 1) + i
+            if position == -1:
+                map = self.maps[len(self.maps) - 1]
+            elif position == len(self.maps):
+                map = self.maps[0]
+            else:
+                map = self.maps[position]
+
+            if i == 1:
+                self.widgets.append(Rect(rx, self.y, item_width, self.height, Color.WHITE))
+
+            color = Color.BLACK if i == 1 else Color.WHITE
+            self.widgets.append(MiniMap(self.game, map, None, rx + (item_width - 240) / 2, self.y + 64, 240, 240))
+            self.widgets.append(Label(map.name, rx, self.y + 64 + 240 + 24, item_width, 32, self.game.textFont, color))
+            self.widgets.append(Label('Size: %dx%d' % (map.width, map.height), rx, self.y + 64 + 240 + 24 + 32 + 8, item_width, 32, self.game.smallFont, color))
+            rx += item_width
+
+        self.widgets.append(Button('<', self.x, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
+        self.widgets.append(Button('>', self.x + self.width - 48, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
+
+    # Load and add map file
+    def load_map(self, file_path):
+        file_path = os.path.abspath(file_path)
+        # Check if map is not already pressent
+        if file_path not in self.mapPaths:
+            # Add and select it
+            self.maps.append(Map.load_from_file(file_path))
+            self.selectedMapIndex = len(self.maps) - 1
+            self.update_widgets()
+
+        # Just selected the map
+        else:
+            self.selectedMapIndex = self.mapPaths.index(file_path)
+            self.update_widgets()
+
+    # Handle rotate left button click
+    def rotate_left_button_clicked(self):
+        if self.selectedMapIndex == 0:
+            self.selectedMapIndex = len(self.maps) - 1
+        else:
+            self.selectedMapIndex -= 1
+        self.update_widgets()
+
+    # Handle rotate right button click
+    def rotate_right_button_clicked(self):
+        if self.selectedMapIndex == len(self.maps) - 1:
+            self.selectedMapIndex = 0
+        else:
+            self.selectedMapIndex += 1
+        self.update_widgets()
+
+    # Handle map selector events
+    def handle_event(self, event):
+        # Send all events to the widgets
+        for widget in reversed(self.widgets):
+            if widget.handle_event(event):
+                return True
+
+        return False
+
+    # Draw map selector
+    def draw(self, surface):
+        # Draw widgets
+        for widget in self.widgets:
+            widget.draw(surface)
+
+# The vehicle selector widget class
+class VehicleSelector:
+    def __init__(self, game, x, y, width, height, color):
+        self.game = game
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+
+        # Create vehicle selector widget widgets
+        self.widgets = []
+
+        ry = y + 32
+        self.vehicleImage = Image(None, x, ry, width, 128)
+        self.widgets.append(self.vehicleImage)
+        ry += 128 + 32
+        self.nameLabel = Label('', x, ry, width, 48, game.textFont, Color.WHITE)
+        self.widgets.append(self.nameLabel)
+        ry += 48 + 16
+        self.maxForwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
+        self.widgets.append(self.maxForwardSpeed)
+        ry += 32 + 16
+        self.maxBackwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
+        self.widgets.append(self.maxBackwardSpeed)
+        ry += 32 + 16
+        self.turningSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
+        self.widgets.append(self.turningSpeed)
+
+        self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
+        self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
+
+        self.selectedVehicleIndex = random.randint(0, len(vehicles) - 1)
+        self.update_vehicle()
+
+    # Update selected vehicle
+    def update_vehicle(self):
+        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
+        vehicleImageSurface = pygame.Surface(( self.selectedVehicle['width'], self.selectedVehicle['height'] ), pygame.SRCALPHA)
+        vehicleImageSurface.blit(self.game.vehiclesImage, ( 0, 0 ),  (
+            self.selectedVehicle['colors'][self.color]['x'],
+            self.selectedVehicle['colors'][self.color]['y'],
+            self.selectedVehicle['width'],
+            self.selectedVehicle['height']
+        ))
+        self.vehicleImage.set_image(vehicleImageSurface)
+
+        self.nameLabel.set_text(self.selectedVehicle['name'])
+        self.maxForwardSpeed.set_text('Max Forward Speed: %d km/h' % (self.selectedVehicle['maxForwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
+        self.maxBackwardSpeed.set_text('Max Backward Speed: %d km/h' % (self.selectedVehicle['maxBackwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
+        self.turningSpeed.set_text('Turing Speed: %d \u00B0/s' % math.degrees(self.selectedVehicle['turningSpeed']))
+
+    # Handle rotate left button click
+    def rotate_left_button_clicked(self):
+        if self.selectedVehicleIndex == 0:
+            self.selectedVehicleIndex = len(vehicles) - 1
+        else:
+            self.selectedVehicleIndex -= 1
+        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
+        self.update_vehicle()
+
+    # Handle rotate right button click
+    def rotate_right_button_clicked(self):
+        if self.selectedVehicleIndex == len(vehicles) - 1:
+            self.selectedVehicleIndex = 0
+        else:
+            self.selectedVehicleIndex += 1
+        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
+        self.update_vehicle()
+
+    # Handle vehicle selector events
+    def handle_event(self, event):
+        # Send all events to the widgets
+        for widget in reversed(self.widgets):
+            if widget.handle_event(event):
+                return True
+
+        return False
+
+    # Draw vehicle selector
+    def draw(self, surface):
+        # Draw widgets
+        for widget in self.widgets:
+            widget.draw(surface)
+
 # The vehicle viewport widget class
 class VehicleViewport:
     def __init__(self, game, vehicle, x, y, width, height, map, vehicles):
@@ -228,7 +416,7 @@ class VehicleViewport:
         self.map = map
         self.vehicles = vehicles
         self.surface = pygame.Surface(( width, height ))
-        self.camera = Camera(self.vehicle.x, self.vehicle.y, self.game.tilesImage, Config.TILE_SPRITE_SIZE // 2, self.game.vehiclesImage)
+        self.camera = Camera(self.vehicle.x, self.vehicle.y, self.game.tilesImage, Config.TILE_SPRITE_SIZE, self.game.vehiclesImage)
 
         # Create vehicle viewport widgets
         self.widgets = []
@@ -302,91 +490,6 @@ class VehicleViewport:
 
         # Draw own surface to the screen
         surface.blit(self.surface, ( self.x, self.y ))
-
-# The vehicle selector widget class
-class VehicleSelector:
-    def __init__(self, game, x, y, width, height, color):
-        self.game = game
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.color = color
-
-        # Create vehicle selector widget widgets
-        self.widgets = []
-
-        ry = y + 32
-        self.vehicleImage = Image(None, x, ry, width, 128)
-        self.widgets.append(self.vehicleImage)
-        ry += 128 + 32
-        self.nameLabel = Label('', x, ry, width, 48, game.textFont, Color.WHITE)
-        self.widgets.append(self.nameLabel)
-        ry += 48 + 16
-        self.maxForwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
-        self.widgets.append(self.maxForwardSpeed)
-        ry += 32 + 16
-        self.maxBackwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
-        self.widgets.append(self.maxBackwardSpeed)
-        ry += 32 + 16
-        self.turningSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
-        self.widgets.append(self.turningSpeed)
-
-        self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
-        self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
-
-        self.selectedVehicleIndex = random.randint(0, len(vehicles) - 1)
-        self.update_vehicle()
-
-    # Update selected vehicle
-    def update_vehicle(self):
-        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
-        vehicleImageSurface = pygame.Surface(( self.selectedVehicle['width'], self.selectedVehicle['height'] ), pygame.SRCALPHA)
-        vehicleImageSurface.blit(self.game.vehiclesImage, ( 0, 0 ),  (
-            self.selectedVehicle['colors'][self.color]['x'],
-            self.selectedVehicle['colors'][self.color]['y'],
-            self.selectedVehicle['width'],
-            self.selectedVehicle['height']
-        ))
-        self.vehicleImage.set_image(vehicleImageSurface)
-
-        self.nameLabel.set_text(self.selectedVehicle['name'])
-        self.maxForwardSpeed.set_text('Max Forward Speed: %d km/h' % (self.selectedVehicle['maxForwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
-        self.maxBackwardSpeed.set_text('Max Backward Speed: %d km/h' % (self.selectedVehicle['maxBackwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
-        self.turningSpeed.set_text('Turing Speed: %d \u00B0/s' % math.degrees(self.selectedVehicle['turningSpeed']))
-
-    # Handle rotate left button click
-    def rotate_left_button_clicked(self):
-        if self.selectedVehicleIndex == 0:
-            self.selectedVehicleIndex = len(vehicles) - 1
-        else:
-            self.selectedVehicleIndex -= 1
-        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
-        self.update_vehicle()
-
-    # Handle rotate right button click
-    def rotate_right_button_clicked(self):
-        if self.selectedVehicleIndex == len(vehicles) - 1:
-            self.selectedVehicleIndex = 0
-        else:
-            self.selectedVehicleIndex += 1
-        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
-        self.update_vehicle()
-
-    # Handle page events
-    def handle_event(self, event):
-        # Send all events to the widgets
-        for widget in reversed(self.widgets):
-            if widget.handle_event(event):
-                return True
-
-        return False
-
-    # Draw page
-    def draw(self, surface):
-        # Draw widgets
-        for widget in self.widgets:
-            widget.draw(surface)
 
 # The map editor widget class
 class MapEditor:
