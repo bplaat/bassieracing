@@ -54,14 +54,16 @@ class Label:
         self.font = font
         self.color = color
         self.align = align
-        self.set_text(text)
+        self.text = text
+        self.textSurface = font.render(text, True, color)
         self.clickCallback = clickCallback
         self.callbackExtra = callbackExtra
 
     # Update label text
     def set_text(self, text):
-        self.text = text
-        self.textSurface = self.font.render(self.text, True, self.color)
+        if text != self.text:
+            self.text = text
+            self.textSurface = self.font.render(self.text, True, self.color)
 
     # Handle label events
     def handle_event(self, event):
@@ -113,21 +115,56 @@ class Button(Label):
         surface.fill(self.backgroundColor, ( self.x, self.y, self.width, self.height ))
         Label.draw(self, surface)
 
-# The combobox widget class
+# The toggle button widget class
+class ToggleButton(Button):
+    # Create toggle button
+    def __init__(self, labels, active, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+        self.labels = labels
+        self.active = False
+        self.blurBackgroundColor = backgroundColor
+        self.activeBackgroundColor = activeBackgroundColor
+        self.changedCallback = changedCallback
+        self.callbackExtra = callbackExtra
+        Button.__init__(self, labels[0], x, y, width, height, font, color, backgroundColor, self.button_clicked)
+        self.set_active(active)
+
+    # Set active
+    def set_active(self, active):
+        if active != self.active:
+            self.active = active
+            self.set_text(self.labels[int(active)])
+            if active:
+                self.backgroundColor = self.activeBackgroundColor
+            else:
+                self.backgroundColor = self.blurBackgroundColor
+
+            # Call change callback
+            if self.changedCallback != None:
+                if self.callbackExtra != None:
+                    self.changedCallback(active, self.callbackExtra)
+                else:
+                    self.changedCallback(active)
+
+    # Button clicked
+    def button_clicked(self):
+        self.set_active(not self.active)
+
+# The combo box widget class
 class ComboBox(Button):
-    # Create combobox
-    def __init__(self, game, options, selectedItem, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+    # Create combo box
+    def __init__(self, game, options, selectedOptionIndex, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
         self.game = game
         self.options = options
-        self.selectedItem = selectedItem
-        Button.__init__(self, options[self.selectedItem] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
+        self.selectedOptionIndex = selectedOptionIndex
+        self.selectedOption = options[selectedOptionIndex]
+        Button.__init__(self, options[self.selectedOptionIndex] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
         self.blurBackgroundColor = backgroundColor
         self.activeBackgroundColor = activeBackgroundColor
         self.changedCallback = changedCallback
         self.callbackExtra = callbackExtra
         self.active = False
 
-        # Create combobox widgets
+        # Create combo box widgets
         ry = y + height
         if len(options) * height > game.height - (y + height):
             ry = y - len(options) * height
@@ -137,10 +174,19 @@ class ComboBox(Button):
             self.widgets.append(Button(option, x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
             ry += height
 
-    # Set selected item
-    def set_selected(self, selectedItem):
-        self.selectedItem = selectedItem
-        self.set_text(self.options[self.selectedItem] + ' \u25BC')
+    # Set selected option
+    def set_selected(self, selectedOptionIndex):
+        if selectedOptionIndex != self.selectedOptionIndex:
+            self.selectedOptionIndex = selectedOptionIndex
+            self.selectedOption = self.options[selectedOptionIndex]
+            self.set_text(self.options[selectedOptionIndex] + ' \u25BC')
+
+            # Call change callback
+            if self.changedCallback != None:
+                if self.callbackExtra != None:
+                    self.changedCallback(selectedOptionIndex, self.callbackExtra)
+                else:
+                    self.changedCallback(selectedOptionIndex)
 
     # Root button clicked
     def root_button_clicked(self):
@@ -158,14 +204,7 @@ class ComboBox(Button):
         self.backgroundColor = self.blurBackgroundColor
         self.set_selected(optionIndex)
 
-        # Call callback
-        if self.changedCallback != None:
-            if self.callbackExtra != None:
-                self.changedCallback(self.selectedItem, self.callbackExtra)
-            else:
-                self.changedCallback(self.selectedItem)
-
-    # Handle combobox events
+    # Handle combo box events
     def handle_event(self, event):
         # If active handle widget events
         if self.active:
@@ -176,7 +215,7 @@ class ComboBox(Button):
         # Handle root button events
         return Button.handle_event(self, event)
 
-    # Draw combobox
+    # Draw combo box
     def draw(self, surface):
         # Draw root button
         Button.draw(self, surface)
@@ -274,26 +313,37 @@ class MiniMap:
 
 # The map selector widget
 class MapSelector:
-    def __init__(self, game, x, y, width, height):
+    def __init__(self, game, x, y, width, height, selectedMapIndex, customMapPaths, changedCallback = None, callbackExtra = None):
         self.game = game
         self.x = x
         self.y = y
         self.width = width
         self.height = height
+        self.changedCallback = changedCallback
+        self.callbackExtra = callbackExtra
 
+        # Load default maps
         self.mapPaths = [ os.path.abspath('assets/maps/' + filename) for filename in os.listdir('assets/maps/') if os.path.isfile('assets/maps/' + filename) ]
         self.maps = [ Map.load_from_file(mapPath) for mapPath in self.mapPaths ]
 
-        self.selectedMapIndex = random.randint(0, len(self.maps) - 1)
-        self.create_widgets()
+        # Add previous custom maps
+        for customMapPath in customMapPaths:
+            customMapPath = os.path.abspath(customMapPath)
+            if customMapPath not in self.mapPaths:
+                self.mapPaths.append(customMapPath)
+                self.maps.append(Map.load_from_file(customMapPath))
+
+        # Set selected or selected a random one
+        if selectedMapIndex != None:
+            self.set_selected(selectedMapIndex)
+        else:
+            self.set_selected(random.randint(0, len(self.maps) - 1))
 
     # Create map selector widgets
     def create_widgets(self):
-        self.selectedMap = self.maps[self.selectedMapIndex]
-
         self.widgets = []
 
-        item_width = (self.width - 48 - 48) // 3
+        column_width = (self.width - 48 - 48) // 3
         rx = self.x + 48
         for i in range(3):
             position = (self.selectedMapIndex - 1) + i
@@ -305,56 +355,67 @@ class MapSelector:
                 map = self.maps[position]
 
             if i == 0:
-                self.widgets.append(Rect(rx, self.y, item_width, self.height, None, self.rotate_left_button_clicked))
+                self.widgets.append(Rect(rx, self.y, column_width, self.height, None, self.rotate_left_button_clicked))
             if i == 1:
-                self.widgets.append(Rect(rx, self.y, item_width, self.height, Color.WHITE))
+                self.widgets.append(Rect(rx, self.y, column_width, self.height, Color.WHITE))
             if i == 2:
-                self.widgets.append(Rect(rx, self.y, item_width, self.height, None, self.rotate_right_button_clicked))
+                self.widgets.append(Rect(rx, self.y, column_width, self.height, None, self.rotate_right_button_clicked))
 
             color = Color.BLACK if i == 1 else Color.WHITE
 
             minmap_size = self.game.width // 5
             ry = self.y + (self.height - (minmap_size + 32 + 32 + 24 + 24)) // 2
-            self.widgets.append(MiniMap(self.game, map, None, rx + (item_width - minmap_size) / 2, ry, minmap_size, minmap_size))
+            self.widgets.append(MiniMap(self.game, map, None, rx + (column_width - minmap_size) / 2, ry, minmap_size, minmap_size))
             ry += minmap_size + 32
-            self.widgets.append(Label(map.name, rx, ry, item_width, 32, self.game.textFont, color))
+            self.widgets.append(Label(map.name, rx, ry, column_width, 32, self.game.textFont, color))
             ry += 32 + 24
-            self.widgets.append(Label('Size: %dx%d' % (map.width, map.height), rx, ry, item_width, 24, self.game.smallFont, color))
-            rx += item_width
+            self.widgets.append(Label('Size: %dx%d' % (map.width, map.height), rx, ry, column_width, 24, self.game.smallFont, color))
+            rx += column_width
 
         self.widgets.append(Button('<', self.x, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
         self.widgets.append(Button('>', self.x + self.width - 48, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
 
+    # Set selected map
+    def set_selected(self, selectedMapIndex):
+        self.selectedMapIndex = selectedMapIndex
+        self.selectedMap = self.maps[self.selectedMapIndex]
+        self.create_widgets()
+
+        # Call change callback
+        if self.changedCallback != None:
+            if self.callbackExtra != None:
+                self.changedCallback(selectedMapIndex, self.callbackExtra)
+            else:
+                self.changedCallback(selectedMapIndex)
+
     # Load and add map file
     def load_map(self, file_path):
         file_path = os.path.abspath(file_path)
+
         # Check if map is not already pressent
         if file_path not in self.mapPaths:
             # Add and select it
+            self.mapPaths.append(file_path)
             self.maps.append(Map.load_from_file(file_path))
-            self.selectedMapIndex = len(self.maps) - 1
-            self.create_widgets()
+            self.set_selected(len(self.maps) - 1)
 
         # Just selected the map
         else:
-            self.selectedMapIndex = self.mapPaths.index(file_path)
-            self.create_widgets()
+            self.set_selected(self.mapPaths.index(file_path))
 
     # Handle rotate left button click
     def rotate_left_button_clicked(self):
         if self.selectedMapIndex == 0:
-            self.selectedMapIndex = len(self.maps) - 1
+            self.set_selected(len(self.maps) - 1)
         else:
-            self.selectedMapIndex -= 1
-        self.create_widgets()
+            self.set_selected(self.selectedMapIndex - 1)
 
     # Handle rotate right button click
     def rotate_right_button_clicked(self):
         if self.selectedMapIndex == len(self.maps) - 1:
-            self.selectedMapIndex = 0
+            self.set_selected(0)
         else:
-            self.selectedMapIndex += 1
-        self.create_widgets()
+            self.set_selected(self.selectedMapIndex + 1)
 
     # Handle map selector events
     def handle_event(self, event):
@@ -373,13 +434,15 @@ class MapSelector:
 
 # The vehicle selector widget class
 class VehicleSelector:
-    def __init__(self, game, x, y, width, height, color):
+    def __init__(self, game, x, y, width, height, color, selectedVehicleIndex, changedCallback = None, callbackExtra = None):
         self.game = game
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.color = color
+        self.changedCallback = changedCallback
+        self.callbackExtra = callbackExtra
 
         # Create vehicle selector widget widgets
         self.widgets = []
@@ -403,12 +466,27 @@ class VehicleSelector:
         self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
         self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
 
-        self.selectedVehicleIndex = random.randint(0, len(vehicles) - 1)
-        self.update_vehicle()
+        # Set selected or selected a random one
+        if selectedVehicleIndex != None:
+            self.set_selected(selectedVehicleIndex)
+        else:
+            self.set_selected(random.randint(0, len(vehicles) - 1))
 
-    # Update selected vehicle
-    def update_vehicle(self):
+    # Set selected vehicle
+    def set_selected(self, selectedVehicleIndex):
+        self.selectedVehicleIndex = selectedVehicleIndex
         self.selectedVehicle = vehicles[self.selectedVehicleIndex]
+        self.update_widgets()
+
+        # Call change callback
+        if self.changedCallback != None:
+            if self.callbackExtra != None:
+                self.changedCallback(selectedVehicleIndex, self.callbackExtra)
+            else:
+                self.changedCallback(selectedVehicleIndex)
+
+    # Update wigets
+    def update_widgets(self):
         vehicleImageSurface = pygame.Surface(( self.selectedVehicle['width'], self.selectedVehicle['height'] ), pygame.SRCALPHA)
         vehicleImageSurface.blit(self.game.vehiclesImage, ( 0, 0 ),  (
             self.selectedVehicle['colors'][self.color]['x'],
@@ -426,20 +504,16 @@ class VehicleSelector:
     # Handle rotate left button click
     def rotate_left_button_clicked(self):
         if self.selectedVehicleIndex == 0:
-            self.selectedVehicleIndex = len(vehicles) - 1
+            self.set_selected(len(vehicles) - 1)
         else:
-            self.selectedVehicleIndex -= 1
-        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
-        self.update_vehicle()
+            self.set_selected(self.selectedVehicleIndex - 1)
 
     # Handle rotate right button click
     def rotate_right_button_clicked(self):
         if self.selectedVehicleIndex == len(vehicles) - 1:
-            self.selectedVehicleIndex = 0
+            self.set_selected(0)
         else:
-            self.selectedVehicleIndex += 1
-        self.selectedVehicle = vehicles[self.selectedVehicleIndex]
-        self.update_vehicle()
+            self.set_selected(self.selectedVehicleIndex + 1)
 
     # Handle vehicle selector events
     def handle_event(self, event):
@@ -556,15 +630,16 @@ class MapEditor:
     TOOL_LABELS =  [ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ]
 
     # Create map editor
-    def __init__(self, game, map, x, y, width, height, tool):
+    def __init__(self, game, map, x, y, width, height, tool, grid):
         self.game = game
         self.map = map
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.center_camera()
         self.tool = tool
+        self.grid = grid
+        self.center_camera()
         self.mouseDown = False
         self.surface = pygame.Surface(( width, height ))
 
@@ -573,9 +648,7 @@ class MapEditor:
         self.camera = Camera(
             self.map.startX * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
             self.map.startY * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
-            self.game.tilesImage,
-            Config.EDITOR_TILE_SIZE,
-            self.game.vehiclesImage
+            self.game.tilesImage, Config.EDITOR_TILE_SIZE, self.game.vehiclesImage, None, self.grid
         )
 
     # Use tool
@@ -586,29 +659,29 @@ class MapEditor:
         if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
             if self.tool == MapEditor.GRASS_BRUSH:
                 self.map.terrain[tileY][tileX] = 0
-                self.map.blendTerrain()
+                self.map.blend_terrain()
 
             if self.tool == MapEditor.DIRT_BRUSH:
                 self.map.terrain[tileY][tileX] = 1
-                self.map.blendTerrain()
+                self.map.blend_terrain()
 
             if self.tool == MapEditor.SAND_BRUSH:
                 self.map.terrain[tileY][tileX] = 2
-                self.map.blendTerrain()
+                self.map.blend_terrain()
 
             if self.tool == MapEditor.ASPHALT_BRUSH:
                 self.map.track[tileY][tileX] = 1
-                self.map.blendTrack()
+                self.map.blend_track()
 
             if self.tool == MapEditor.FINISH_BRUSH:
                 self.map.track[tileY][tileX] = 2
                 self.map.startX = tileX
                 self.map.startY = tileY
-                self.map.blendTrack()
+                self.map.blend_track()
 
             if self.tool == MapEditor.TRACK_ERASER:
                 self.map.track[tileY][tileX] = 0
-                self.map.blendTrack()
+                self.map.blend_track()
 
     # Handle page events
     def handle_event(self, event):

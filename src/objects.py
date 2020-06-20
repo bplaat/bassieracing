@@ -12,7 +12,7 @@ import tkinter.messagebox
 
 # The camera class
 class Camera:
-    def __init__(self, x, y, tilesImage, tileSize, vehiclesImage, vehicleScale = None):
+    def __init__(self, x, y, tilesImage, tileSize, vehiclesImage, vehicleScale = None, grid = False):
         self.x = x
         self.y = y
 
@@ -38,6 +38,8 @@ class Camera:
                 math.floor(vehiclesImage.get_height() * self.vehicleScale)
             ))
         self.vehicleImageCache = [ None for i in range(2) ]
+
+        self.grid = grid
 
         self.speed = 400
 
@@ -159,10 +161,11 @@ class Map:
         for y in range(height):
             for x in range(width):
                 self.terrain[y][x] = self.generate_terrain_tile(x, y)
-        self.blendTerrain()
+        self.fix_terrain_erros()
+        self.blend_terrain()
 
         self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
-        self.blendTrack()
+        self.blend_track()
 
     # Create map by loading a JSON string
     @staticmethod
@@ -190,9 +193,9 @@ class Map:
         map.startAngle = math.radians(data['start']['angle'])
 
         map.terrain = data['terrain']
-        map.blendTerrain()
+        map.blend_terrain()
         map.track = data['track']
-        map.blendTrack()
+        map.blend_track()
 
         return map
 
@@ -238,8 +241,24 @@ class Map:
             return 1
         return 0
 
+    # Fix terrain errors
+    def fix_terrain_erros(self):
+        # Fix single tile noise errors
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.terrain[y][x] == 0:
+                    if (x != 0 and self.terrain[y][x - 1] == 1) and (x != self.width - 1 and self.terrain[y][x + 1] == 1):
+                        self.terrain[y][x] = 1
+                    if (y != 0 and self.terrain[y - 1][x] == 1) and (y != self.height - 1 and self.terrain[y + 1][x] == 1):
+                        self.terrain[y][x] = 1
+                if self.terrain[y][x] == 1:
+                    if (x != 0 and self.terrain[y][x - 1] == 2) and (x != self.width - 1 and self.terrain[y][x + 1] == 2):
+                        self.terrain[y][x] = 2
+                    if (y != 0 and self.terrain[y - 1][x] == 2) and (y != self.height - 1 and self.terrain[y + 1][x] == 2):
+                        self.terrain[y][x] = 2
+
     # Blend terrain
-    def blendTerrain(self):
+    def blend_terrain(self):
         self.blendedTerrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
         for y in range(self.height):
             for x in range(self.width):
@@ -318,7 +337,7 @@ class Map:
                     self.blendedTerrain[y][x] = 26
 
     # Blend track
-    def blendTrack(self):
+    def blend_track(self):
         self.blendedTrack = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
         for y in range(self.height):
             for x in range(self.width):
@@ -400,14 +419,15 @@ class Map:
                         self.terrain[y][x] = old_terrain[y - dh][x - dw]
                     else:
                         self.terrain[y][x] = self.generate_terrain_tile(x, y)
-            self.blendTerrain()
+            self.fix_terrain_erros()
+            self.blend_terrain()
 
             self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
             for y in range(height):
                 for x in range(width):
                     if x - dw >= 0 and y - dh >= 0 and x - dw < old_width and y - dh < old_height:
                         self.track[y][x] = old_track[y - dh][x - dw]
-            self.blendTrack()
+            self.blend_track()
 
             self.startX += dw
             self.startY += dh
@@ -421,13 +441,13 @@ class Map:
             for y in range(height):
                 for x in range(width):
                     self.terrain[y][x] = old_terrain[dh + y][dw + x]
-            self.blendTerrain()
+            self.blend_terrain()
 
             self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
             for y in range(height):
                 for x in range(width):
                     self.track[y][x] = old_track[dh + y][dw + x]
-            self.blendTrack()
+            self.blend_track()
 
             self.startX -= dw
             self.startY -= dh
@@ -441,16 +461,20 @@ class Map:
                 tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
                 ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
                 if tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and tx < surface.get_width() and ty < surface.get_height():
-                    surface.blit(
-                        camera.tilesImage,
-                        ( tx, ty, camera.tileSize, camera.tileSize ),
-                        (
+                    if camera.grid:
+                        surface.blit(camera.tilesImage, ( tx + 1, ty + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
+                            math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
+                            math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
+                            camera.tileSize - 1,
+                            camera.tileSize - 1
+                        ))
+                    else:
+                        surface.blit(camera.tilesImage, ( tx, ty, camera.tileSize, camera.tileSize ), (
                             math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                             math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                             camera.tileSize,
                             camera.tileSize
-                        )
-                    )
+                        ))
 
         # Draw track tiles to surface
         for y in range(self.height):
@@ -464,13 +488,17 @@ class Map:
                         tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and
                         tx < surface.get_width() and ty < surface.get_height()
                     ):
-                        surface.blit(
-                            camera.tilesImage,
-                            ( tx, ty, camera.tileSize, camera.tileSize ),
-                            (
+                        if camera.grid:
+                            surface.blit(camera.tilesImage, ( tx + 1, ty + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
+                                math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
+                                math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
+                                camera.tileSize - 1,
+                                camera.tileSize - 1
+                            ))
+                        else:
+                            surface.blit(camera.tilesImage, ( tx, ty, camera.tileSize, camera.tileSize ), (
                                 math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                                 math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                                 camera.tileSize,
                                 camera.tileSize
-                            )
-                        )
+                            ))

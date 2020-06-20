@@ -143,16 +143,22 @@ class MenuPage(Page):
 class SelectMapPage(Page):
     # Create select map page
     def __init__(self, game):
+        self.selectedMapIndex = None
+        self.customMapPaths = []
         Page.__init__(self, game)
 
     # Create select map page widgets
     def create_widgets(self):
         self.widgets.append(Label('Select a map to race', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        self.mapSelector = MapSelector(self.game, 16, 24 + 96 + 16, self.game.width - 16 - 16, self.game.height - (24 + 96 + 16) - (48 + 64 + 16))
+        self.mapSelector = MapSelector(self.game, 16, 24 + 96 + 16, self.game.width - 16 - 16, self.game.height - (24 + 96 + 16) - (48 + 64 + 16), self.selectedMapIndex, self.customMapPaths, self.map_selector_changed)
         self.widgets.append(self.mapSelector)
         self.widgets.append(Button('Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button('Load custom map', (self.game.width - 420) // 2, self.game.height - 64 - 16, 420, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
         self.widgets.append(Button('Continue', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
+
+    # Map selector changed
+    def map_selector_changed(self, selectedMapIndex):
+        self.selectedMapIndex = selectedMapIndex
 
     # Back button clicked
     def back_button_clicked(self):
@@ -162,6 +168,7 @@ class SelectMapPage(Page):
     def load_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path != '':
+            self.customMapPaths.append(file_path)
             self.mapSelector.load_map(file_path)
 
     # Continue button clicked
@@ -173,17 +180,27 @@ class SelectVehiclePage(Page):
     # Create select vehicle page
     def __init__(self, game, map):
         self.map = map
+        self.leftSelectedVehicleIndex = None
+        self.rightSelectedVehicleIndex = None
         Page.__init__(self, game)
 
     # Create select vehicle page widgets
     def create_widgets(self):
         self.widgets.append(Label('Select both your vehicle', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), 0)
+        self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), 0, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
         self.widgets.append(self.leftVehicleSelector)
-        self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), 1)
+        self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), 1, self.rightSelectedVehicleIndex, self.right_vehicle_selector_changed)
         self.widgets.append(self.rightVehicleSelector)
         self.widgets.append(Button('Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button('Race!', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
+
+    # Left vehicle selector changed
+    def left_vehicle_selector_changed(self, selectedVehicleIndex):
+        self.leftSelectedVehicleIndex = selectedVehicleIndex
+
+    # Right vehicle selector changed
+    def right_vehicle_selector_changed(self, selectedVehicleIndex):
+        self.rightSelectedVehicleIndex = selectedVehicleIndex
 
     # Back button clicked
     def back_button_clicked(self):
@@ -244,22 +261,23 @@ class EditorPage(Page):
     # Create edit page
     def __init__(self, game):
         self.map = Map('Custom Map', 32, 32)
+        self.grid = False
         Page.__init__(self, game, Color.DARK)
 
     # Create edit page widgets
     def create_widgets(self):
-        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, MapEditor.ASPHALT_BRUSH)
+        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, MapEditor.ASPHALT_BRUSH, self.grid)
         self.widgets.append(self.mapEditor)
 
         self.widgets.append(Button('New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
         self.widgets.append(Button('Load', 16 + (128 + 16), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
         self.widgets.append(Button('Save', 16 + (128 + 16) * 2, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
-
+        self.widgets.append(ToggleButton([ 'Grid off', 'Grid on' ], self.grid, 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
         self.widgets.append(Button('Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
-        self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ], 1, 16, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combobox_changed)
+        self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ], 1, 16, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
         self.widgets.append(self.sizeComboBox)
-        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, 3, self.game.width // 2 + 8, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combobox_changed)
+        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, 3, self.game.width // 2 + 8, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
         self.widgets.append(self.brushComboBox)
 
     # Update map editor
@@ -269,7 +287,7 @@ class EditorPage(Page):
     # New button clicked
     def new_button_clicked(self):
         for i, size in enumerate(Config.MAP_SIZES):
-            if i == self.sizeComboBox.selectedItem:
+            if i == self.sizeComboBox.selectedOptionIndex:
                 self.map = Map('Custom Map', size, size)
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
@@ -295,7 +313,7 @@ class EditorPage(Page):
                         self.sizeComboBox.set_selected(i)
                         return
 
-                self.sizeComboBox.selectedItem = len(self.sizeComboBox.options)
+                self.sizeComboBox.selectedOptionIndex = len(self.sizeComboBox.options)
                 self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
 
     # Save button clicked
@@ -304,22 +322,28 @@ class EditorPage(Page):
         if file_path != '':
             self.map.save_to_file(file_path)
 
+    # Grid toggle button changed
+    def grid_togglebutton_changed(self, active):
+        self.grid = active
+        self.mapEditor.grid = active
+        self.mapEditor.camera.grid = active
+
     # Back button clicked
     def back_button_clicked(self):
         self.game.page = MenuPage(self.game)
 
-    # Size combobox changed
-    def size_combobox_changed(self, selectedItem):
+    # Size combo box changed
+    def size_combo_box_changed(self, selectedOptionIndex):
         for i, size in enumerate(Config.MAP_SIZES):
-            if selectedItem == i:
+            if i == selectedOptionIndex:
                 self.map.resize(size, size)
                 self.mapEditor.center_camera()
                 break
 
-    # Brush combobox changed
-    def brush_combobox_changed(self, selectedItem):
+    # Brush combo box changed
+    def brush_combo_box_changed(self, selectedOptionIndex):
         for i, label in enumerate(MapEditor.TOOL_LABELS):
-            if selectedItem == i:
+            if i == selectedOptionIndex:
                 self.mapEditor.tool = i
                 break
 
