@@ -11,20 +11,37 @@ from stats import *
 # The rect widget class
 class Rect:
     # Create rect
-    def __init__(self, x, y, width, height, color):
+    def __init__(self, x, y, width, height, color, clickCallback = None, callbackExtra = None):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.color = color
+        self.clickCallback = clickCallback
+        self.callbackExtra = callbackExtra
 
     # Handle rect events
     def handle_event(self, event):
+        # Handle mouse events
+        if (
+            self.clickCallback != None and
+            event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP) and
+            event.pos[0] >= self.x and event.pos[1] >= self.y and
+            event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
+        ):
+            if event.type == pygame.MOUSEBUTTONUP:
+                if self.callbackExtra != None:
+                    self.clickCallback(self.callbackExtra)
+                else:
+                    self.clickCallback()
+            return True
+
         return False
 
     # Draw rect
     def draw(self, surface):
-        pygame.draw.rect(surface, self.color, ( self.x, self.y, self.width, self.height ))
+        if self.color != None:
+            surface.fill(self.color, ( self.x, self.y, self.width, self.height ))
 
 # The label widget class
 class Label:
@@ -93,7 +110,7 @@ class Button(Label):
 
     # Draw button
     def draw(self, surface):
-        pygame.draw.rect(surface, self.backgroundColor, ( self.x, self.y, self.width, self.height ))
+        surface.fill(self.backgroundColor, ( self.x, self.y, self.width, self.height ))
         Label.draw(self, surface)
 
 # The combobox widget class
@@ -287,8 +304,12 @@ class MapSelector:
             else:
                 map = self.maps[position]
 
+            if i == 0:
+                self.widgets.append(Rect(rx, self.y, item_width, self.height, None, self.rotate_left_button_clicked))
             if i == 1:
                 self.widgets.append(Rect(rx, self.y, item_width, self.height, Color.WHITE))
+            if i == 2:
+                self.widgets.append(Rect(rx, self.y, item_width, self.height, None, self.rotate_right_button_clicked))
 
             color = Color.BLACK if i == 1 else Color.WHITE
 

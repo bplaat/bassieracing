@@ -280,11 +280,42 @@ class Map:
 
                 # Dirt terrain tile
                 if self.terrain[y][x] == 1:
-                    self.blendedTerrain[y][x] = 13
+                    # Sand 1/4 corner
+                    if (x != 0 and self.terrain[y][x - 1] == 2) and (y != 0 and self.terrain[y - 1][x] == 2):
+                        self.blendedTerrain[y][x] = 22
+                    elif (x != self.width - 1 and self.terrain[y][x + 1] == 2) and (y != 0 and self.terrain[y - 1][x] == 2):
+                        self.blendedTerrain[y][x] = 23
+                    elif (x != 0 and self.terrain[y][x - 1] == 2) and (y != self.height - 1 and self.terrain[y + 1][x] == 2):
+                        self.blendedTerrain[y][x] = 24
+                    elif (x != self.width - 1 and self.terrain[y][x + 1] == 2) and (y != self.height - 1 and self.terrain[y + 1][x] == 2):
+                        self.blendedTerrain[y][x] = 25
+
+                    # Sand border
+                    elif y != 0 and self.terrain[y - 1][x] == 2:
+                        self.blendedTerrain[y][x] = 14
+                    elif y != self.height - 1 and self.terrain[y + 1][x] == 2:
+                        self.blendedTerrain[y][x] = 15
+                    elif x != 0 and self.terrain[y][x - 1] == 2:
+                        self.blendedTerrain[y][x] = 16
+                    elif x != self.width - 1 and self.terrain[y][x + 1] == 2:
+                        self.blendedTerrain[y][x] = 17
+
+                    # Sand 3/4 corner
+                    elif x != 0 and y != 0 and self.terrain[y - 1][x - 1] == 2:
+                        self.blendedTerrain[y][x] = 18
+                    elif x != self.width - 1 and y != 0 and self.terrain[y - 1][x + 1] == 2:
+                        self.blendedTerrain[y][x] = 19
+                    elif x != 0 and y != self.height - 1 and self.terrain[y + 1][x - 1] == 2:
+                        self.blendedTerrain[y][x] = 20
+                    elif x != self.width - 1 and y != self.height - 1 and self.terrain[y + 1][x + 1] == 2:
+                        self.blendedTerrain[y][x] = 21
+
+                    else:
+                        self.blendedTerrain[y][x] = 13
 
                 # Sand terrain tile
                 if self.terrain[y][x] == 2:
-                    self.blendedTerrain[y][x] = 14
+                    self.blendedTerrain[y][x] = 26
 
     # Blend track
     def blendTrack(self):

@@ -101,7 +101,7 @@ class MenuPage(Page):
 
     # Create menu page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + (64 + 16) * 4)) // 2
+        y = ((self.game.height - 24) - (96 + (64 + 16) * 4)) // 2
         self.widgets.append(Label('BassieRacing', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
         self.widgets.append(Button('Play', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.play_button_clicked))
