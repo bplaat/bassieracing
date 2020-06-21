@@ -43,6 +43,34 @@ class Game:
         # Load images
         self.tilesImage = pygame.image.load('assets/images/tiles.png').convert_alpha()
         self.vehiclesImage = pygame.image.load('assets/images/vehicles.png').convert_alpha()
+        self.explosionImage = pygame.image.load('assets/images/explosion.png').convert_alpha()
+
+        # Load music
+        pygame.mixer.music.load('assets/music/deadmau5 - Infra Turbo Pigcart Racer.ogg')
+        pygame.mixer.music.set_volume(0.5)
+
+        # Load sounds
+        self.clickSound = pygame.mixer.Sound('assets/sounds/click.wav')
+        self.crashSound = pygame.mixer.Sound('assets/sounds/crash.wav')
+        self.introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
+        self.lapSound = pygame.mixer.Sound('assets/sounds/lap.wav')
+
+        # Load settings
+        if os.path.isfile('settings.json'):
+            with open('settings.json', 'r') as file:
+                self.settings = json.load(file)
+        else:
+            self.settings = {
+                'type': 'BassieRacing Settings',
+                'music': {
+                    'enabled': True,
+                    'position': 0
+                },
+                'sound-effects': {
+                    'enabled': True
+                }
+            }
+        self.musicStart = self.settings['music']['position']
 
         # Create hidden Tkinter window for file dialogs and error messages
         self.tkinter_window = tkinter.Tk()
@@ -50,6 +78,12 @@ class Game:
 
         # Create intro page
         self.page = IntroPage(self)
+
+    # Save settings to file
+    def save_settings(self):
+        self.settings['music']['position'] = round(self.musicStart + pygame.mixer.music.get_pos() / 1000, 3)
+        with open('settings.json', 'w') as file:
+            json.dump(self.settings, file, separators=(',', ':'))
 
     # Handle user events
     def handle_event(self, event):
@@ -64,6 +98,7 @@ class Game:
 
         # Handle window close events
         if event.type == pygame.QUIT:
+            self.save_settings()
             self.running = False
 
     # The game loop

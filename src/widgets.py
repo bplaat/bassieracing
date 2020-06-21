@@ -11,7 +11,8 @@ from stats import *
 # The rect widget class
 class Rect:
     # Create rect
-    def __init__(self, x, y, width, height, color, clickCallback = None, callbackExtra = None):
+    def __init__(self, game, x, y, width, height, color, clickCallback = None, callbackExtra = None):
+        self.game = game
         self.x = x
         self.y = y
         self.width = width
@@ -30,6 +31,9 @@ class Rect:
             event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
         ):
             if event.type == pygame.MOUSEBUTTONUP:
+                if self.game.settings['sound-effects']['enabled']:
+                    self.game.clickSound.play()
+
                 if self.callbackExtra != None:
                     self.clickCallback(self.callbackExtra)
                 else:
@@ -46,7 +50,8 @@ class Rect:
 # The label widget class
 class Label:
     # Create label
-    def __init__(self, text, x, y, width, height, font, color, align = TextAlign.CENTER, clickCallback = None, callbackExtra = None):
+    def __init__(self, game, text, x, y, width, height, font, color, align = TextAlign.CENTER, clickCallback = None, callbackExtra = None):
+        self.game = game
         self.x = x
         self.y = y
         self.width = width
@@ -75,6 +80,9 @@ class Label:
             event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
         ):
             if event.type == pygame.MOUSEBUTTONUP:
+                if self.game.settings['sound-effects']['enabled']:
+                    self.game.clickSound.play()
+
                 if self.callbackExtra != None:
                     self.clickCallback(self.callbackExtra)
                 else:
@@ -106,8 +114,8 @@ class Label:
 # The button widget class
 class Button(Label):
     # Create button
-    def __init__(self, text, x, y, width, height, font, color, backgroundColor, clickCallback = None, callbackExtra = None):
-        Label.__init__(self, text, x, y, width, height, font, color, TextAlign.CENTER, clickCallback, callbackExtra)
+    def __init__(self, game, text, x, y, width, height, font, color, backgroundColor, clickCallback = None, callbackExtra = None):
+        Label.__init__(self, game, text, x, y, width, height, font, color, TextAlign.CENTER, clickCallback, callbackExtra)
         self.backgroundColor = backgroundColor
 
     # Draw button
@@ -118,17 +126,17 @@ class Button(Label):
 # The toggle button widget class
 class ToggleButton(Button):
     # Create toggle button
-    def __init__(self, labels, active, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+    def __init__(self, game, labels, active, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
         self.labels = labels
         self.active = False
         self.blurBackgroundColor = backgroundColor
         self.activeBackgroundColor = activeBackgroundColor
         self.changedCallback = changedCallback
         self.callbackExtra = callbackExtra
-        Button.__init__(self, labels[0], x, y, width, height, font, color, backgroundColor, self.button_clicked)
+        Button.__init__(self, game, labels[0], x, y, width, height, font, color, backgroundColor, self.button_clicked)
         self.set_active(active)
 
-    # Set active
+    # Set active item
     def set_active(self, active):
         if active != self.active:
             self.active = active
@@ -138,26 +146,25 @@ class ToggleButton(Button):
             else:
                 self.backgroundColor = self.blurBackgroundColor
 
-            # Call change callback
-            if self.changedCallback != None:
-                if self.callbackExtra != None:
-                    self.changedCallback(active, self.callbackExtra)
-                else:
-                    self.changedCallback(active)
-
     # Button clicked
     def button_clicked(self):
         self.set_active(not self.active)
+
+        # Call change callback
+        if self.changedCallback != None:
+            if self.callbackExtra != None:
+                self.changedCallback(self.active, self.callbackExtra)
+            else:
+                self.changedCallback(self.active)
 
 # The combo box widget class
 class ComboBox(Button):
     # Create combo box
     def __init__(self, game, options, selectedOptionIndex, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
-        self.game = game
         self.options = options
         self.selectedOptionIndex = selectedOptionIndex
         self.selectedOption = options[selectedOptionIndex]
-        Button.__init__(self, options[self.selectedOptionIndex] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
+        Button.__init__(self, game, options[self.selectedOptionIndex] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
         self.blurBackgroundColor = backgroundColor
         self.activeBackgroundColor = activeBackgroundColor
         self.changedCallback = changedCallback
@@ -171,7 +178,7 @@ class ComboBox(Button):
 
         self.widgets = []
         for i, option in enumerate(options):
-            self.widgets.append(Button(option, x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
+            self.widgets.append(Button(game, option, x, ry, width, height, font, color, backgroundColor, self.option_button_clicked, i))
             ry += height
 
     # Set selected option
@@ -180,13 +187,6 @@ class ComboBox(Button):
             self.selectedOptionIndex = selectedOptionIndex
             self.selectedOption = self.options[selectedOptionIndex]
             self.set_text(self.options[selectedOptionIndex] + ' \u25BC')
-
-            # Call change callback
-            if self.changedCallback != None:
-                if self.callbackExtra != None:
-                    self.changedCallback(selectedOptionIndex, self.callbackExtra)
-                else:
-                    self.changedCallback(selectedOptionIndex)
 
     # Root button clicked
     def root_button_clicked(self):
@@ -203,6 +203,13 @@ class ComboBox(Button):
         self.active = False
         self.backgroundColor = self.blurBackgroundColor
         self.set_selected(optionIndex)
+
+        # Call change callback
+        if self.changedCallback != None:
+            if self.callbackExtra != None:
+                self.changedCallback(optionIndex, self.callbackExtra)
+            else:
+                self.changedCallback(optionIndex)
 
     # Handle combo box events
     def handle_event(self, event):
@@ -365,11 +372,11 @@ class MapSelector:
                 map = self.maps[position]
 
             if i == 0:
-                self.widgets.append(Rect(rx, self.y, column_width, self.height, None, self.rotate_left_button_clicked))
+                self.widgets.append(Rect(self.game, rx, self.y, column_width, self.height, None, self.rotate_left_button_clicked))
             if i == 1:
-                self.widgets.append(Rect(rx, self.y, column_width, self.height, Color.WHITE))
+                self.widgets.append(Rect(self.game, rx, self.y, column_width, self.height, Color.WHITE))
             if i == 2:
-                self.widgets.append(Rect(rx, self.y, column_width, self.height, None, self.rotate_right_button_clicked))
+                self.widgets.append(Rect(self.game, rx, self.y, column_width, self.height, None, self.rotate_right_button_clicked))
 
             color = Color.BLACK if i == 1 else Color.WHITE
 
@@ -377,13 +384,13 @@ class MapSelector:
             ry = self.y + (self.height - (minmap_size + 32 + 32 + 24 + 24)) // 2
             self.widgets.append(MiniMap(self.game, map, None, rx + (column_width - minmap_size) / 2, ry, minmap_size, minmap_size))
             ry += minmap_size + 32
-            self.widgets.append(Label(map.name, rx, ry, column_width, 32, self.game.textFont, color))
+            self.widgets.append(Label(self.game, map.name, rx, ry, column_width, 32, self.game.textFont, color))
             ry += 32 + 24
-            self.widgets.append(Label('Size: %dx%d' % (map.width, map.height), rx, ry, column_width, 24, self.game.smallFont, color))
+            self.widgets.append(Label(self.game, 'Size: %dx%d' % (map.width, map.height), rx, ry, column_width, 24, self.game.smallFont, color))
             rx += column_width
 
-        self.widgets.append(Button('<', self.x, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
-        self.widgets.append(Button('>', self.x + self.width - 48, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
+        self.widgets.append(Button(self.game, '<', self.x, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
+        self.widgets.append(Button(self.game, '>', self.x + self.width - 48, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
 
     # Set selected map
     def set_selected(self, selectedMapIndex):
@@ -463,20 +470,20 @@ class VehicleSelector:
         self.vehicleImage = Image(None, x, ry, width, 128)
         self.widgets.append(self.vehicleImage)
         ry += 128 + 32
-        self.nameLabel = Label('', x, ry, width, 48, game.textFont, Color.WHITE)
+        self.nameLabel = Label(self.game, '', x, ry, width, 48, game.textFont, Color.WHITE)
         self.widgets.append(self.nameLabel)
         ry += 48 + 16
-        self.maxForwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
+        self.maxForwardSpeed = Label(self.game, '', x, ry, width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.maxForwardSpeed)
         ry += 32 + 16
-        self.maxBackwardSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
+        self.maxBackwardSpeed = Label(self.game, '', x, ry, width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.maxBackwardSpeed)
         ry += 32 + 16
-        self.turningSpeed = Label('', x, ry, width, 32, game.smallFont, Color.WHITE)
+        self.turningSpeed = Label(self.game, '', x, ry, width, 32, game.smallFont, Color.WHITE)
         self.widgets.append(self.turningSpeed)
 
-        self.widgets.append(Button('<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
-        self.widgets.append(Button('>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
+        self.widgets.append(Button(self.game, '<', x, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))
+        self.widgets.append(Button(self.game, '>', x + width - 48, y, 48, height, game.titleFont, Color.BLACK, Color.WHITE, self.rotate_right_button_clicked))
 
         # Set selected or selected a random one
         if selectedVehicleIndex != None:
@@ -560,7 +567,7 @@ class VehicleViewport:
 
         # Create vehicle viewport widgets
         self.widgets = []
-        self.speedLabel = Label('Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
+        self.speedLabel = Label(self.game, 'Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
 
     def handle_event(self, event):

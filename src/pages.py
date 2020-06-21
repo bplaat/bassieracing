@@ -59,8 +59,9 @@ class IntroPage(Page):
         Page.__init__(self, game, Color.WHITE)
 
         # Load and play intro sound
-        introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
-        self.introSoundChannel = introSound.play()
+        if not game.settings['sound-effects']['enabled']:
+            game.introSound.set_volume(0)
+        self.introSoundChannel = game.introSound.play()
         self.introSoundChannel.set_endevent(pygame.USEREVENT + 1)
 
     # Create intro page widgets
@@ -68,9 +69,9 @@ class IntroPage(Page):
         y = (self.game.height - (256 + 32 + 96 + 16 + 64)) // 2
         self.widgets.append(Image('assets/images/logo.png', 0, y, self.game.width, 256))
         y += 256 + 32
-        self.widgets.append(Label('BassieSoft', 0, y, self.game.width, 96, self.game.titleFont, Color.BLACK))
+        self.widgets.append(Label(self.game, 'BassieSoft', 0, y, self.game.width, 96, self.game.titleFont, Color.BLACK))
         y += 96 + 16
-        self.widgets.append(Label('Presents a new racing game...', 0, y, self.game.width, 64, self.game.textFont, Color.BLACK))
+        self.widgets.append(Label(self.game, 'Presents a new racing game...', 0, y, self.game.width, 64, self.game.textFont, Color.BLACK))
 
     # Handle intro page events
     def handle_event(self, event):
@@ -80,6 +81,8 @@ class IntroPage(Page):
         if event.type == pygame.MOUSEBUTTONUP:
             self.introSoundChannel.set_endevent()
             self.introSoundChannel.fadeout(250)
+            if self.game.settings['sound-effects']['enabled']:
+                self.game.clickSound.play()
             self.game.page = MenuPage(self.game)
             return True
 
@@ -99,21 +102,27 @@ class MenuPage(Page):
     def __init__(self, game):
         Page.__init__(self, game)
 
+        # Start music if enabled in settings
+        if game.settings['music']['enabled'] and not pygame.mixer.music.get_busy():
+            pygame.mixer.music.play(-1, game.settings['music']['position'])
+
     # Create menu page widgets
     def create_widgets(self):
-        y = ((self.game.height - 24) - (96 + (64 + 16) * 4)) // 2
-        self.widgets.append(Label('BassieRacing', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        y = ((self.game.height - 32) - (96 + (64 + 16) * 5)) // 2
+        self.widgets.append(Label(self.game, 'BassieRacing', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
-        self.widgets.append(Button('Play', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.play_button_clicked))
+        self.widgets.append(Button(self.game, 'Play', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.play_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Map Editor', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.edit_button_clicked))
+        self.widgets.append(Button(self.game, 'Map Editor', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.edit_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Help', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
+        self.widgets.append(Button(self.game, 'Help', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.help_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button('Exit', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
+        self.widgets.append(Button(self.game, 'Settings', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.settings_button_clicked))
+        y += 64 + 16
+        self.widgets.append(Button(self.game, 'Exit', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
 
-        self.widgets.append(Label('v' + Config.VERSION, self.game.width - 16 - 128, 16, 128, 32, self.game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
-        self.widgets.append(Label('Made by Bastiaan van der Plaat', 0, self.game.height - 64 - 16, self.game.width, 64, self.game.textFont, Color.WHITE, TextAlign.CENTER, self.footer_label_clicked))
+        self.widgets.append(Label(self.game, 'v' + Config.VERSION, self.game.width - 16 - 128, 16, 128, 32, self.game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
+        self.widgets.append(Label(self.game, 'Made by Bastiaan van der Plaat', 0, self.game.height - 64 - 16, self.game.width, 64, self.game.textFont, Color.WHITE, TextAlign.CENTER, self.footer_label_clicked))
 
     # Version label clicked
     def version_label_clicked(self):
@@ -127,9 +136,13 @@ class MenuPage(Page):
     def edit_button_clicked(self):
         self.game.page = EditorPage(self.game)
 
-     # Help button clicked
+    # Help button clicked
     def help_button_clicked(self):
         self.game.page = HelpPage(self.game)
+
+    # Settings button clicked
+    def settings_button_clicked(self):
+        self.game.page = SettingsPage(self.game)
 
     # Exit button clicked
     def exit_button_clicked(self):
@@ -149,12 +162,12 @@ class SelectMapPage(Page):
 
     # Create select map page widgets
     def create_widgets(self):
-        self.widgets.append(Label('Select a map to race', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'Select a map to race', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
         self.mapSelector = MapSelector(self.game, 16, 24 + 96 + 16, self.game.width - 16 - 16, self.game.height - (24 + 96 + 16) - (48 + 64 + 16), self.selectedMapIndex, self.customMapPaths, self.map_selector_changed)
         self.widgets.append(self.mapSelector)
-        self.widgets.append(Button('Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
-        self.widgets.append(Button('Load custom map', (self.game.width - 420) // 2, self.game.height - 64 - 16, 420, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
-        self.widgets.append(Button('Continue', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
+        self.widgets.append(Button(self.game, 'Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button(self.game, 'Load custom map', (self.game.width - 420) // 2, self.game.height - 64 - 16, 420, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
+        self.widgets.append(Button(self.game, 'Continue', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
     # Map selector changed
     def map_selector_changed(self, selectedMapIndex):
@@ -166,7 +179,7 @@ class SelectMapPage(Page):
 
     # Load button clicked
     def load_button_clicked(self):
-        file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
+        file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to load...', filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path != '':
             self.customMapPaths.append(file_path)
             self.mapSelector.load_map(file_path)
@@ -186,13 +199,13 @@ class SelectVehiclePage(Page):
 
     # Create select vehicle page widgets
     def create_widgets(self):
-        self.widgets.append(Label('Select both your vehicle', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'Select both your vehicle', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
         self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), 0, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
         self.widgets.append(self.leftVehicleSelector)
         self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), 1, self.rightSelectedVehicleIndex, self.right_vehicle_selector_changed)
         self.widgets.append(self.rightVehicleSelector)
-        self.widgets.append(Button('Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
-        self.widgets.append(Button('Race!', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
+        self.widgets.append(Button(self.game, 'Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button(self.game, 'Race!', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
 
     # Left vehicle selector changed
     def left_vehicle_selector_changed(self, selectedVehicleIndex):
@@ -242,9 +255,9 @@ class GamePage(Page):
         self.widgets.append(VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles))
         self.widgets.append(VehicleViewport(self.game, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles))
         minimap_size = self.game.width / 5
-        self.widgets.append(Rect((self.game.width - minimap_size) // 2 - 2, 8, minimap_size + 4, minimap_size + 4, Color.BLACK))
+        self.widgets.append(Rect(self.game, (self.game.width - minimap_size) // 2 - 2, 8, minimap_size + 4, minimap_size + 4, Color.BLACK))
         self.widgets.append(MiniMap(self.game, self.map, self.vehicles, (self.game.width - minimap_size) // 2, 10, minimap_size, minimap_size))
-        self.widgets.append(Button('Back', self.game.width - 16 - 128, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button(self.game, 'Back', self.game.width - 16 - 128, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked
     def back_button_clicked(self):
@@ -275,11 +288,11 @@ class EditorPage(Page):
         self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, self.selectedBrushIndex, self.grid, self.mapCameraX, self.mapCameraY)
         self.widgets.append(self.mapEditor)
 
-        self.widgets.append(Button('New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
-        self.widgets.append(Button('Open', 16 + (128 + 16), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.open_button_clicked))
-        self.widgets.append(Button('Save', 16 + (128 + 16) * 2, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
-        self.widgets.append(ToggleButton([ 'Grid off', 'Grid on' ], self.grid, 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
-        self.widgets.append(Button('Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button(self.game, 'New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
+        self.widgets.append(Button(self.game, 'Open', 16 + (128 + 16), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.open_button_clicked))
+        self.widgets.append(Button(self.game, 'Save', 16 + (128 + 16) * 2, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
+        self.widgets.append(ToggleButton(self.game, [ 'Grid off', 'Grid on' ], self.grid, 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
+        self.widgets.append(Button(self.game, 'Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
         self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ],
             0 if self.selectedSizeIndex == len(Config.MAP_SIZES) else self.selectedSizeIndex, 16, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
@@ -331,7 +344,7 @@ class EditorPage(Page):
 
     # Open button clicked
     def open_button_clicked(self):
-        file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
+        file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to open...', filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path != '':
             self.file_path = file_path
             self.map = Map.load_from_file(file_path)
@@ -351,7 +364,7 @@ class EditorPage(Page):
     # Save button clicked
     def save_button_clicked(self):
         if self.file_path == None:
-            file_path = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
+            file_path = tkinter.filedialog.asksaveasfilename(title='Select a location to save the BassieRacing Map...', filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
             if file_path != '':
                 self.file_path = file_path
 
@@ -393,20 +406,59 @@ class HelpPage(Page):
 
     # Create help page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + (64 + 16) * 5 + 16)) // 2
-        self.widgets.append(Label('Help', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        y = (self.game.height - (96 + (64 + 16) * 5 + 64 + 32)) // 2
+        self.widgets.append(Label(self.game, 'Help', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
-        self.widgets.append(Label('BassieRacing is a topdown 2D two player racing game', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'BassieRacing is a topdown 2D two player racing game', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('You can control the left car by using WASD keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'You can control the left car by using WASD keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('You can control the right car by using the arrow keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'You can control the right car by using the arrow keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('There are multiple maps and vehicles that you can try', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'There are multiple maps and vehicles that you can try', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label('You can also create or edit custom maps', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'You can also create or edit custom maps', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 32
-        self.widgets.append(Button('Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Back button clicked event
+    def back_button_clicked(self):
+        self.game.page = MenuPage(self.game)
+
+# The settings page class
+class SettingsPage(Page):
+    # Create settings page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+    # Create settings page widgets
+    def create_widgets(self):
+        y = (self.game.height - (96 + 16 + 64 + 16 + 64 + 24 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        y += 96 + 16
+        self.widgets.append(ToggleButton(self.game, [ 'Fancy music disabled', 'Fancy music enabled' ], self.game.settings['music']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.music_toggle_button_changed))
+        y += 64 + 16
+        self.widgets.append(ToggleButton(self.game, [ 'Sound effects disabled', 'Sound effects enabled' ], self.game.settings['sound-effects']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.sound_effects_toggle_button_changed))
+        y += 64 + 24
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Sound effects toggle button changed
+    def music_toggle_button_changed(self, active):
+        self.game.settings['music']['enabled'] = active
+        self.game.save_settings()
+
+        if active:
+            if not pygame.mixer.music.get_busy():
+                pygame.mixer.music.play(-1, self.game.settings['music']['position'])
+            else:
+                pygame.mixer.music.unpause()
+        else:
+            pygame.mixer.music.pause()
+
+    # Sound effects toggle button changed
+    def sound_effects_toggle_button_changed(self, active):
+        self.game.settings['sound-effects']['enabled'] = active
+        self.game.save_settings()
 
     # Back button clicked event
     def back_button_clicked(self):
