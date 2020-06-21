@@ -263,11 +263,15 @@ class EditorPage(Page):
         self.map = Map('Custom Map', 32, 32)
         self.map.generate()
         self.grid = False
+        self.mapCameraX = None
+        self.mapCameraY = None
+        self.selectedSizeIndex = 1
+        self.selectedBrushIndex = 3
         Page.__init__(self, game, Color.DARK)
 
     # Create edit page widgets
     def create_widgets(self):
-        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, MapEditor.ASPHALT_BRUSH, self.grid)
+        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, self.selectedBrushIndex, self.grid, self.mapCameraX, self.mapCameraY)
         self.widgets.append(self.mapEditor)
 
         self.widgets.append(Button('New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
@@ -276,14 +280,19 @@ class EditorPage(Page):
         self.widgets.append(ToggleButton([ 'Grid off', 'Grid on' ], self.grid, 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
         self.widgets.append(Button('Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
-        self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ], 1, 16, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
+        self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ],
+            0 if self.selectedSizeIndex == len(Config.MAP_SIZES) else self.selectedSizeIndex, 16, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
+        if self.selectedSizeIndex == len(Config.MAP_SIZES):
+            self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
         self.widgets.append(self.sizeComboBox)
-        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, 3, self.game.width // 2 + 8, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
+        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, self.selectedBrushIndex, self.game.width // 2 + 8, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
         self.widgets.append(self.brushComboBox)
 
     # Update map editor
     def update(self, delta):
         self.mapEditor.update(delta)
+        self.mapCameraX = self.mapEditor.camera.x
+        self.mapCameraY = self.mapEditor.camera.y
 
     # New button clicked
     def new_button_clicked(self):
@@ -313,10 +322,11 @@ class EditorPage(Page):
 
                 for i, size in enumerate(Config.MAP_SIZES):
                     if size == self.map.width:
+                        self.selectedSizeIndex = i
                         self.sizeComboBox.set_selected(i)
                         return
 
-                self.sizeComboBox.selectedOptionIndex = len(self.sizeComboBox.options)
+                self.selectedSizeIndex = len(Config.MAP_SIZES)
                 self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
 
     # Save button clicked
@@ -337,6 +347,7 @@ class EditorPage(Page):
 
     # Size combo box changed
     def size_combo_box_changed(self, selectedOptionIndex):
+        self.selectedSizeIndex = selectedOptionIndex
         for i, size in enumerate(Config.MAP_SIZES):
             if i == selectedOptionIndex:
                 self.map.resize(size, size)
@@ -345,6 +356,7 @@ class EditorPage(Page):
 
     # Brush combo box changed
     def brush_combo_box_changed(self, selectedOptionIndex):
+        self.selectedBrushIndex = selectedOptionIndex
         for i, label in enumerate(MapEditor.TOOL_LABELS):
             if i == selectedOptionIndex:
                 self.mapEditor.tool = i

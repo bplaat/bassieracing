@@ -642,7 +642,7 @@ class MapEditor:
     TOOL_LABELS =  [ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ]
 
     # Create map editor
-    def __init__(self, game, map, x, y, width, height, tool, grid):
+    def __init__(self, game, map, x, y, width, height, tool, grid, cameraX = None, cameraY = None):
         self.game = game
         self.map = map
         self.x = x
@@ -651,15 +651,15 @@ class MapEditor:
         self.height = height
         self.tool = tool
         self.grid = grid
-        self.center_camera()
+        self.center_camera(cameraX, cameraY)
         self.mouseDown = False
         self.surface = pygame.Surface(( width, height ))
 
     # Center camera
-    def center_camera(self):
+    def center_camera(self, cameraX = None, cameraY = None):
         self.camera = Camera(
-            self.map.startX * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
-            self.map.startY * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            cameraX if cameraX != None else self.map.startX * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            cameraY if cameraY != None else self.map.startY * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
             self.game.tilesImage, Config.EDITOR_TILE_SIZE, self.game.vehiclesImage, None, self.grid
         )
 

@@ -158,6 +158,7 @@ class Map:
         for y in range(self.height):
             for x in range(self.width):
                 self.terrain[y][x] = self.generate_terrain_tile(x, y)
+        self.fix_noise_errors()
         self.blend_terrain()
 
         self.track = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
@@ -228,9 +229,8 @@ class Map:
             return 1
         return 0
 
-    # Blend terrain
-    def blend_terrain(self):
-        # Fix single tile noise errors
+    # Fix single tile noise errors
+    def fix_noise_errors(self):
         for y in range(self.height):
             for x in range(self.width):
                 if self.terrain[y][x] == 0:
@@ -244,6 +244,8 @@ class Map:
                     if (y != 0 and self.terrain[y - 1][x] == 2) and (y != self.height - 1 and self.terrain[y + 1][x] == 2):
                         self.terrain[y][x] = 2
 
+    # Blend terrain
+    def blend_terrain(self):
         # Blend terrain tiles
         self.blendedTerrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
         for y in range(self.height):
@@ -457,6 +459,7 @@ class Map:
                         self.terrain[y][x] = old_terrain[y - dh][x - dw]
                     else:
                         self.terrain[y][x] = self.generate_terrain_tile(x, y)
+            self.fix_noise_errors()
             self.blend_terrain()
 
             self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
