@@ -27,6 +27,7 @@ class Color:
     DARK = ( 25, 25, 25 )
     LIGHT_GRAY = ( 225, 225, 225 )
     WHITE = ( 255, 255, 255 )
+    TRANSPARENT = ( 0, 0, 0, 0 )
 
 # The text align constants class
 class TextAlign:

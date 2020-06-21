@@ -228,8 +228,8 @@ class GamePage(Page):
         self.vehicles.append(self.leftVehicle)
 
         self.rightVehicle = Vehicle(1, rightVehicleType, 1,
-            map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-            map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * 1.5,
+            map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * (1.5 if map.startAngle == 0 else 0.5),
+            map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * (1.5 if map.startAngle == math.radians(270) else 0.5),
             map.startAngle
         )
         self.vehicles.append(self.rightVehicle)
@@ -261,6 +261,7 @@ class EditorPage(Page):
     # Create edit page
     def __init__(self, game):
         self.map = Map('Custom Map', 32, 32)
+        self.map.generate()
         self.grid = False
         Page.__init__(self, game, Color.DARK)
 
@@ -289,12 +290,14 @@ class EditorPage(Page):
         for i, size in enumerate(Config.MAP_SIZES):
             if i == self.sizeComboBox.selectedOptionIndex:
                 self.map = Map('Custom Map', size, size)
+                self.map.generate()
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
                 return
 
         # When custom size
         self.map = Map('Custom Map', 32, 32)
+        self.map.generate()
         self.mapEditor.map = self.map
         self.mapEditor.center_camera()
         self.sizeComboBox.set_selected(1)

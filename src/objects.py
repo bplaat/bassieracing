@@ -148,24 +148,20 @@ class Map:
         self.width = width
         self.height = height
 
-        # Generate terrain
+    # Generate random map
+    def generate(self):
         self.noise = PerlinNoise()
         self.noiseX = random.randint(-1000000, 1000000)
         self.noiseY = random.randint(-1000000, 1000000)
 
-        self.startX = width // 2
-        self.startY = height // 2
-        self.startAngle = math.radians(270)
-
-        self.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
-        for y in range(height):
-            for x in range(width):
+        self.terrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
+        for y in range(self.height):
+            for x in range(self.width):
                 self.terrain[y][x] = self.generate_terrain_tile(x, y)
-        self.fix_terrain_erros()
         self.blend_terrain()
 
-        self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
-        self.blend_track()
+        self.track = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
+        self.blend_track(False)
 
     # Create map by loading a JSON string
     @staticmethod
@@ -185,17 +181,14 @@ class Map:
 
         map = Map(data['name'], data['width'], data['height'])
 
+        map.noise = PerlinNoise()
         map.noiseX = data['noise']['x']
         map.noiseY = data['noise']['y']
-
-        map.startX = data['start']['x']
-        map.startY = data['start']['y']
-        map.startAngle = math.radians(data['start']['angle'])
 
         map.terrain = data['terrain']
         map.blend_terrain()
         map.track = data['track']
-        map.blend_track()
+        map.blend_track(True)
 
         return map
 
@@ -221,12 +214,6 @@ class Map:
                     'y': self.noiseY
                 },
 
-                'start': {
-                    'x': self.startX,
-                    'y': self.startY,
-                    'angle': math.degrees(self.startAngle)
-                },
-
                 'terrain': self.terrain,
                 'track': self.track
             }
@@ -241,8 +228,8 @@ class Map:
             return 1
         return 0
 
-    # Fix terrain errors
-    def fix_terrain_erros(self):
+    # Blend terrain
+    def blend_terrain(self):
         # Fix single tile noise errors
         for y in range(self.height):
             for x in range(self.width):
@@ -257,8 +244,7 @@ class Map:
                     if (y != 0 and self.terrain[y - 1][x] == 2) and (y != self.height - 1 and self.terrain[y + 1][x] == 2):
                         self.terrain[y][x] = 2
 
-    # Blend terrain
-    def blend_terrain(self):
+        # Blend terrain tiles
         self.blendedTerrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
         for y in range(self.height):
             for x in range(self.width):
@@ -336,8 +322,60 @@ class Map:
                 if self.terrain[y][x] == 2:
                     self.blendedTerrain[y][x] = 26
 
+    # Find map finish start point
+    def find_start_point(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.track[y][x] == 2:
+                    if (x == 0 or self.track[y][x - 1] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
+                        self.startX = x
+                        self.startY = y
+                        self.startAngle = 0
+
+                    if x != self.width - 1 and self.track[y][x + 1] == 2:
+                        width = 0
+                        for i in range(self.width):
+                            if x + i != self.width - 1 and self.track[y][x + i] == 2:
+                                width += 1
+                            else:
+                                break
+
+                        self.startX = x + (width // 2 - 1)
+                        self.startY = y
+                        self.startAngle = 0
+
+                    if (y == 0 or self.track[y - 1][x] == 0) and (y == self.height - 1 or self.track[y + 1][x] == 0):
+                        self.startX = x
+                        self.startY = y
+                        self.startAngle = math.radians(270)
+
+                    if y != self.height - 1 and self.track[y + 1][x] == 2:
+                        height = 0
+                        for i in range(self.height):
+                            if y + i != self.height - 1 and self.track[y + i][x] == 2:
+                                height += 1
+                            else:
+                                break
+
+                        self.startX = x
+                        self.startY = y + (height // 2 - 1)
+                        self.startAngle = math.radians(270)
+
+                    return True
+
+        return False
+
     # Blend track
-    def blend_track(self):
+    def blend_track(self, showNoFinishMessage):
+        # Find map start point
+        if not self.find_start_point():
+            if showNoFinishMessage:
+                tkinter.messagebox.showinfo('Map has no finish!', 'This map has no finish set start point to map center')
+            self.startX = self.width // 2
+            self.startY = self.height // 2
+            self.startAngle = math.radians(270)
+
+        # Blend track tiles
         self.blendedTrack = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
         for y in range(self.height):
             for x in range(self.width):
@@ -419,7 +457,6 @@ class Map:
                         self.terrain[y][x] = old_terrain[y - dh][x - dw]
                     else:
                         self.terrain[y][x] = self.generate_terrain_tile(x, y)
-            self.fix_terrain_erros()
             self.blend_terrain()
 
             self.track = [ [ 0 for x in range(width) ] for y in range(height) ]
@@ -427,10 +464,7 @@ class Map:
                 for x in range(width):
                     if x - dw >= 0 and y - dh >= 0 and x - dw < old_width and y - dh < old_height:
                         self.track[y][x] = old_track[y - dh][x - dw]
-            self.blend_track()
-
-            self.startX += dw
-            self.startY += dh
+            self.blend_track(False)
 
         # Crop map
         else:
@@ -447,10 +481,7 @@ class Map:
             for y in range(height):
                 for x in range(width):
                     self.track[y][x] = old_track[dh + y][dw + x]
-            self.blend_track()
-
-            self.startX -= dw
-            self.startY -= dh
+            self.blend_track(False)
 
     # Draw the map
     def draw(self, surface, camera):

@@ -292,6 +292,9 @@ class MiniMap:
 
     # Draw mini map
     def draw(self, surface):
+        # Clear surface
+        self.surface.fill(Color.TRANSPARENT)
+
         # Draw the map
         self.map.draw(self.surface, self.camera)
 
@@ -322,16 +325,23 @@ class MapSelector:
         self.changedCallback = changedCallback
         self.callbackExtra = callbackExtra
 
-        # Load default maps
+        # List default maps
         self.mapPaths = [ os.path.abspath('assets/maps/' + filename) for filename in os.listdir('assets/maps/') if os.path.isfile('assets/maps/' + filename) ]
-        self.maps = [ Map.load_from_file(mapPath) for mapPath in self.mapPaths ]
 
         # Add previous custom maps
         for customMapPath in customMapPaths:
             customMapPath = os.path.abspath(customMapPath)
             if customMapPath not in self.mapPaths:
                 self.mapPaths.append(customMapPath)
-                self.maps.append(Map.load_from_file(customMapPath))
+
+        # Load maps
+        self.maps = []
+        for i, mapPath in enumerate(self.mapPaths):
+            map = Map.load_from_file(mapPath)
+            if map != None:
+                self.maps.append(map)
+            else:
+                del self.mapPaths[i]
 
         # Set selected or selected a random one
         if selectedMapIndex != None:
@@ -395,9 +405,11 @@ class MapSelector:
         # Check if map is not already pressent
         if file_path not in self.mapPaths:
             # Add and select it
-            self.mapPaths.append(file_path)
-            self.maps.append(Map.load_from_file(file_path))
-            self.set_selected(len(self.maps) - 1)
+            map = Map.load_from_file(file_path)
+            if map != None:
+                self.mapPaths.append(file_path)
+                self.maps.append(map)
+                self.set_selected(len(self.maps) - 1)
 
         # Just selected the map
         else:
@@ -671,17 +683,15 @@ class MapEditor:
 
             if self.tool == MapEditor.ASPHALT_BRUSH:
                 self.map.track[tileY][tileX] = 1
-                self.map.blend_track()
+                self.map.blend_track(False)
 
             if self.tool == MapEditor.FINISH_BRUSH:
                 self.map.track[tileY][tileX] = 2
-                self.map.startX = tileX
-                self.map.startY = tileY
-                self.map.blend_track()
+                self.map.blend_track(False)
 
             if self.tool == MapEditor.TRACK_ERASER:
                 self.map.track[tileY][tileX] = 0
-                self.map.blend_track()
+                self.map.blend_track(False)
 
     # Handle page events
     def handle_event(self, event):
