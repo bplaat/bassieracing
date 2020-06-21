@@ -1,6 +1,7 @@
 # BassieRacing - A topdown 2D two player racing game
 # Made by Bastiaan van der Plaat (https://bastiaan.ml/)
 # GitHub repo: https://github.com/bplaat/bassieracing
+# Install all dependencies: pip install pygame
 # Made with pygame (but only used to plot images and text to the screen and to handle the window events)
 # It also uses tkinter for the file open and save dialogs and error messages
 

@@ -260,6 +260,7 @@ class GamePage(Page):
 class EditorPage(Page):
     # Create edit page
     def __init__(self, game):
+        self.file_path = None
         self.map = Map('Custom Map', 32, 32)
         self.map.generate()
         self.grid = False
@@ -275,7 +276,7 @@ class EditorPage(Page):
         self.widgets.append(self.mapEditor)
 
         self.widgets.append(Button('New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
-        self.widgets.append(Button('Load', 16 + (128 + 16), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
+        self.widgets.append(Button('Open', 16 + (128 + 16), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.open_button_clicked))
         self.widgets.append(Button('Save', 16 + (128 + 16) * 2, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
         self.widgets.append(ToggleButton([ 'Grid off', 'Grid on' ], self.grid, 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
         self.widgets.append(Button('Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
@@ -288,7 +289,23 @@ class EditorPage(Page):
         self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, self.selectedBrushIndex, self.game.width // 2 + 8, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
         self.widgets.append(self.brushComboBox)
 
-    # Update map editor
+    # Handle map editor page events
+    def handle_event(self, event):
+        if Page.handle_event(self, event):
+            return True
+
+        # Handle key up events
+        if event.type == pygame.KEYUP:
+            if event.mod & pygame.KMOD_CTRL and event.key == pygame.K_n:
+                self.new_button_clicked()
+            if event.mod & pygame.KMOD_CTRL and event.key == pygame.K_o:
+                self.open_button_clicked()
+            if event.mod & pygame.KMOD_CTRL and event.key == pygame.K_s:
+                self.save_button_clicked()
+
+        return False
+
+    # Update map editor widget
     def update(self, delta):
         self.mapEditor.update(delta)
         self.mapCameraX = self.mapEditor.camera.x
@@ -305,16 +322,18 @@ class EditorPage(Page):
                 return
 
         # When custom size
+        self.file_path = None
         self.map = Map('Custom Map', 32, 32)
         self.map.generate()
         self.mapEditor.map = self.map
         self.mapEditor.center_camera()
         self.sizeComboBox.set_selected(1)
 
-    # Load button clicked
-    def load_button_clicked(self):
+    # Open button clicked
+    def open_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path != '':
+            self.file_path = file_path
             self.map = Map.load_from_file(file_path)
             if self.map != None:
                 self.mapEditor.map = self.map
@@ -331,9 +350,13 @@ class EditorPage(Page):
 
     # Save button clicked
     def save_button_clicked(self):
-        file_path = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
-        if file_path != '':
-            self.map.save_to_file(file_path)
+        if self.file_path == None:
+            file_path = tkinter.filedialog.asksaveasfilename(filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
+            if file_path != '':
+                self.file_path = file_path
+
+        if self.file_path != None:
+            self.map.save_to_file(self.file_path)
 
     # Grid toggle button changed
     def grid_togglebutton_changed(self, active):
