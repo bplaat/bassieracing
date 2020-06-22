@@ -59,10 +59,12 @@ class IntroPage(Page):
         Page.__init__(self, game, Color.WHITE)
 
         # Load and play intro sound
-        if not game.settings['sound-effects']['enabled']:
+        if game.settings['sound-effects']['enabled']:
+            game.introSound.set_volume(0.75)
+        else:
             game.introSound.set_volume(0)
         self.introSoundChannel = game.introSound.play()
-        self.introSoundChannel.set_endevent(pygame.USEREVENT + 1)
+        self.introSoundChannel.set_endevent(pygame.USEREVENT + 2)
 
     # Create intro page widgets
     def create_widgets(self):
@@ -91,7 +93,7 @@ class IntroPage(Page):
             self.introSoundChannel.fadeout(250)
             self.game.page = MenuPage(self.game)
 
-        if event.type == pygame.USEREVENT + 1:
+        if event.type == pygame.USEREVENT + 2:
             self.game.page = MenuPage(self.game)
 
         return False
@@ -104,7 +106,7 @@ class MenuPage(Page):
 
         # Start music if enabled in settings
         if game.settings['music']['enabled'] and not pygame.mixer.music.get_busy():
-            pygame.mixer.music.play(-1, game.settings['music']['position'])
+            pygame.mixer.music.play(0, game.settings['music']['position'])
 
     # Create menu page widgets
     def create_widgets(self):
@@ -146,6 +148,7 @@ class MenuPage(Page):
 
     # Exit button clicked
     def exit_button_clicked(self):
+        self.game.save_settings()
         self.game.running = False
 
     # Footer label clicked
@@ -180,7 +183,7 @@ class SelectMapPage(Page):
     # Load button clicked
     def load_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to load...', filetypes=[ ( 'JSON files', '*.json' ) ])
-        if file_path != '':
+        if file_path:
             self.customMapPaths.append(file_path)
             self.mapSelector.load_map(file_path)
 
@@ -233,14 +236,14 @@ class GamePage(Page):
         # Init the vehicles
         self.vehicles = []
 
-        self.leftVehicle = Vehicle(0, leftVehicleType, 0,
+        self.leftVehicle = Vehicle(game, 0, leftVehicleType, 0, map,
             map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
             map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
             map.startAngle
         )
         self.vehicles.append(self.leftVehicle)
 
-        self.rightVehicle = Vehicle(1, rightVehicleType, 1,
+        self.rightVehicle = Vehicle(game, 1, rightVehicleType, 1, map,
             map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * (1.5 if map.startAngle == 0 else 0.5),
             map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * (1.5 if map.startAngle == math.radians(270) else 0.5),
             map.startAngle
@@ -252,8 +255,10 @@ class GamePage(Page):
 
     # Create game page widgets
     def create_widgets(self):
-        self.widgets.append(VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles))
-        self.widgets.append(VehicleViewport(self.game, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles))
+        self.leftVehicleViewport = VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
+        self.widgets.append(self.leftVehicleViewport)
+        self.rightVehicleViewport = VehicleViewport(self.game, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
+        self.widgets.append(self.rightVehicleViewport)
         minimap_size = self.game.width / 5
         self.widgets.append(Rect(self.game, (self.game.width - minimap_size) // 2 - 2, 8, minimap_size + 4, minimap_size + 4, Color.BLACK))
         self.widgets.append(MiniMap(self.game, self.map, self.vehicles, (self.game.width - minimap_size) // 2, 10, minimap_size, minimap_size))
@@ -267,7 +272,10 @@ class GamePage(Page):
     def update(self, delta):
         # Update all the vehicles
         for vehicle in self.vehicles:
-            vehicle.update(delta)
+            if vehicle.id == 0:
+                vehicle.update(delta, self.leftVehicleViewport.camera)
+            if vehicle.id == 1:
+                vehicle.update(delta, self.rightVehicleViewport.camera)
 
 # The edit page class
 class EditorPage(Page):
@@ -345,7 +353,7 @@ class EditorPage(Page):
     # Open button clicked
     def open_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to open...', filetypes=[ ( 'JSON files', '*.json' ) ])
-        if file_path != '':
+        if file_path:
             self.file_path = file_path
             self.map = Map.load_from_file(file_path)
             if self.map != None:
@@ -365,7 +373,7 @@ class EditorPage(Page):
     def save_button_clicked(self):
         if self.file_path == None:
             file_path = tkinter.filedialog.asksaveasfilename(title='Select a location to save the BassieRacing Map...', filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
-            if file_path != '':
+            if file_path:
                 self.file_path = file_path
 
         if self.file_path != None:
@@ -449,7 +457,7 @@ class SettingsPage(Page):
 
         if active:
             if not pygame.mixer.music.get_busy():
-                pygame.mixer.music.play(-1, self.game.settings['music']['position'])
+                pygame.mixer.music.play(0, self.game.settings['music']['position'])
             else:
                 pygame.mixer.music.unpause()
         else:

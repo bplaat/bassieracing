@@ -149,30 +149,42 @@ trackTiles = [
     None,
 
     # Asphalt tiles
-    { 'x': 512, 'y': 1280 }, #  1 = Asphalt Open
+    { 'x': 512, 'y': 1280 },  #  1 = Asphalt Open
 
-    { 'x': 640, 'y': 1280 }, #  2 = Asphalt Top Closed
-    { 'x': 384, 'y': 1280 }, #  3 = Asphalt Bottom Closed
-    { 'x': 512, 'y': 1408 }, #  4 = Asphalt Left Closed
-    { 'x': 512, 'y': 1152 }, #  5 = Asphalt Right Closed
+    { 'x': 640, 'y': 1280 },  #  2 = Asphalt Top Closed
+    { 'x': 384, 'y': 1280 },  #  3 = Asphalt Bottom Closed
+    { 'x': 512, 'y': 1408 },  #  4 = Asphalt Left Closed
+    { 'x': 512, 'y': 1152 },  #  5 = Asphalt Right Closed
 
-    { 'x': 640, 'y': 1024 }, #  6 = Asphalt Corner Top Left
-    { 'x': 640, 'y': 896 },  #  7 = Asphalt Corner Top Right
-    { 'x': 512, 'y': 1024 }, #  8 = Asphalt Corner Bottom Left
-    { 'x': 512, 'y': 896 },  #  9 = Asphalt Corner Bottom Right
+    { 'x': 640, 'y': 1024 },  #  6 = Asphalt Corner Top Left
+    { 'x': 640, 'y': 896 },   #  7 = Asphalt Corner Top Right
+    { 'x': 512, 'y': 1024 },  #  8 = Asphalt Corner Bottom Left
+    { 'x': 512, 'y': 896 },   #  9 = Asphalt Corner Bottom Right
 
-    { 'x': 640, 'y': 1536 }, # 10 = Asphalt Vertical Closed
-    { 'x': 640, 'y': 1664 }, # 11 = Asphalt Horizontal Closed
+    { 'x': 640, 'y': 1536 },  # 10 = Asphalt Vertical Closed
+    { 'x': 640, 'y': 1664 },  # 11 = Asphalt Horizontal Closed
 
     # Finish tiles
-    { 'x': 0, 'y': 2048 },   # 12 = Finish Vertical Open
-    { 'x': 128, 'y': 2048 }, # 13 = Finish Horizontal Open
+    { 'x': 0, 'y': 2048 },    # 12 = Finish Vertical Open
+    { 'x': 128, 'y': 2048 },  # 13 = Finish Horizontal Open
 
-    { 'x': 0, 'y': 2176 },   # 14 = Finish Top Closed
-    { 'x': 0, 'y': 1920 },   # 15 = Finish Bottom Closed
-    { 'x': 128, 'y': 2176 }, # 16 = Finish Left Closed
-    { 'x': 128, 'y': 1920 }, # 17 = Finish Right Closed
+    { 'x': 0, 'y': 2176 },    # 14 = Finish Top Closed
+    { 'x': 0, 'y': 1920 },    # 15 = Finish Bottom Closed
+    { 'x': 128, 'y': 2176 },  # 16 = Finish Left Closed
+    { 'x': 128, 'y': 1920 },  # 17 = Finish Right Closed
 
-    { 'x': 384, 'y': 1024 }, # 18 = Finish Vertical Closed
-    { 'x': 384, 'y': 896 }   # 19 = Finish Horizontal Closed
+    { 'x': 384, 'y': 896 },   # 18 = Finish Vertical Closed
+    { 'x': 384, 'y': 1024 },  # 19 = Finish Horizontal Closed
+
+    # Checkpoint tiles
+    { 'x': 128, 'y': 256 },   # 20 = Checkpoint Vertical Open
+    { 'x': 128, 'y': 384 },   # 21 = Checkpoint Horizontal Open
+
+    { 'x': 2176, 'y': 768 },  # 22 = Checkpoint Top Closed
+    { 'x': 2176, 'y': 896 },  # 23 = Checkpoint Bottom Closed
+    { 'x': 2176, 'y': 1024 }, # 24 = Checkpoint Left Closed
+    { 'x': 2176, 'y': 1152 }, # 25 = Checkpoint Right Closed
+
+    { 'x': 128, 'y': 768 },   # 26 = Checkpoint Vertical Closed
+    { 'x': 128, 'y': 896 }    # 27 = Checkpoint Horizontal Closed
 ]

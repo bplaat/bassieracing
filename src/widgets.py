@@ -567,6 +567,8 @@ class VehicleViewport:
 
         # Create vehicle viewport widgets
         self.widgets = []
+        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (vehicle.lap, map.laps), 24, height - 24 - 24 - 24 - 16, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
+        self.widgets.append(self.lapLabel)
         self.speedLabel = Label(self.game, 'Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
 
@@ -628,6 +630,9 @@ class VehicleViewport:
         for vehicle in self.vehicles:
             vehicle.draw(self.surface, self.camera)
 
+        # Update lap label
+        self.lapLabel.set_text('Lap: %d/%d' % (self.vehicle.lap, self.map.laps))
+
         # Update speed label
         self.speedLabel.set_text('Speed: %d km/h' % (self.vehicle.velocity / Config.PIXELS_PER_METER * 3.6))
 
@@ -645,8 +650,9 @@ class MapEditor:
     SAND_BRUSH = 2
     ASPHALT_BRUSH = 3
     FINISH_BRUSH = 4
-    TRACK_ERASER = 5
-    TOOL_LABELS =  [ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Track Eraser' ]
+    CHECKPOINT_BRUSH = 5
+    TRACK_ERASER = 6
+    TOOL_LABELS =  [ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Checkpoint Brush', 'Track Eraser' ]
 
     # Create map editor
     def __init__(self, game, map, x, y, width, height, tool, grid, cameraX = None, cameraY = None):
@@ -672,8 +678,8 @@ class MapEditor:
 
     # Use tool
     def use_tool(self, mouseX, mouseY):
-        tileX = math.floor((mouseX + self.camera.x - self.game.width / 2) / Config.EDITOR_TILE_SIZE)
-        tileY = math.floor((mouseY + self.camera.y - self.game.height / 2) / Config.EDITOR_TILE_SIZE)
+        tileX = math.floor((mouseX + self.camera.x - self.width / 2) / Config.EDITOR_TILE_SIZE)
+        tileY = math.floor((mouseY + self.camera.y - self.height / 2) / Config.EDITOR_TILE_SIZE)
 
         if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
             if self.tool == MapEditor.GRASS_BRUSH:
@@ -694,6 +700,10 @@ class MapEditor:
 
             if self.tool == MapEditor.FINISH_BRUSH:
                 self.map.track[tileY][tileX] = 2
+                self.map.blend_track(False)
+
+            if self.tool == MapEditor.CHECKPOINT_BRUSH:
+                self.map.track[tileY][tileX] = 3
                 self.map.blend_track(False)
 
             if self.tool == MapEditor.TRACK_ERASER:

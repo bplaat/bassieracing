@@ -4,7 +4,7 @@
 class Config:
     # App constants
     NAME = 'BassieRacing'
-    VERSION = '0.5.0'
+    VERSION = '0.6.0'
 
     # Window constants
     WIDTH = 1280
@@ -14,6 +14,8 @@ class Config:
     # Game constants
     TILE_SPRITE_SIZE = 128
     PIXELS_PER_METER = 18
+    DEFAULT_LAPS_AMOUNT = 3
+    DEFAULT_LAP_TIMEOUT = 5
 
     # Editor constants
     EDITOR_CAMERA_BORDER = 12

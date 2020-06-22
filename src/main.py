@@ -48,8 +48,10 @@ class Game:
         # Load music
         pygame.mixer.music.load('assets/music/deadmau5 - Infra Turbo Pigcart Racer.ogg')
         pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
 
         # Load sounds
+        self.checkpointSound = pygame.mixer.Sound('assets/sounds/checkpoint.wav')
         self.clickSound = pygame.mixer.Sound('assets/sounds/click.wav')
         self.crashSound = pygame.mixer.Sound('assets/sounds/crash.wav')
         self.introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
@@ -83,10 +85,16 @@ class Game:
     def save_settings(self):
         self.settings['music']['position'] = round(self.musicStart + pygame.mixer.music.get_pos() / 1000, 3)
         with open('settings.json', 'w') as file:
-            json.dump(self.settings, file, separators=(',', ':'))
+            file.write(json.dumps(self.settings, separators=(',', ':')) + '\n')
 
     # Handle user events
     def handle_event(self, event):
+        # When music is finished reset and repeat
+        if event.type == pygame.USEREVENT + 1:
+            self.musicStart = 0
+            pygame.mixer.music.rewind()
+            pygame.mixer.music.play()
+
         # Handle window resize events
         if event.type == pygame.VIDEORESIZE:
             self.width = event.w
@@ -106,9 +114,9 @@ class Game:
         lastTime = time.time()
         while self.running:
             # Calculate delta time
-            currentTime = time.time()
-            delta = currentTime - lastTime
-            lastTime = currentTime
+            self.time = time.time()
+            delta = self.time - lastTime
+            lastTime = self.time
 
             # Handle window events
             for event in pygame.event.get():

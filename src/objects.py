@@ -69,10 +69,15 @@ class Vehicle:
     TURNING_RIGHT = 2
 
     # Create vehicle
-    def __init__(self, id, vehicleType, color, x, y, angle):
+    def __init__(self, game, id, vehicleType, color, map, x, y, angle):
+        self.game = game
         self.id = id
         self.vehicleType = vehicleType
         self.color = color
+        self.map = map
+
+        self.lap = 1
+        self.lastLapTime = game.time
 
         self.x = x
         self.y = y
@@ -85,7 +90,7 @@ class Vehicle:
         self.turning = Vehicle.NOT_TURNING
 
     # Update vehicle
-    def update(self, delta):
+    def update(self, delta, camera):
         # Handle turning
         if self.turning == Vehicle.TURNING_LEFT:
             self.angle += self.vehicleType['turningSpeed'] * delta
@@ -115,6 +120,23 @@ class Vehicle:
         # Calculate new position
         self.x -= self.velocity * math.sin(self.angle) * delta
         self.y -= self.velocity * math.cos(self.angle) * delta
+
+        # Caculate standing tile cordinates
+        tileX = math.floor(self.x / camera.tileSize)
+        tileY = math.floor(self.y / camera.tileSize)
+
+        # Check tile to be not a track tile
+        if self.map.track[tileY][tileX] == 0:
+            if self.game.settings['sound-effects']['enabled']:
+                self.game.crashSound.play()
+
+        # Check tile to be a finish tile
+        if self.map.track[tileY][tileX] == 2 and self.game.time - self.lastLapTime >= Config.DEFAULT_LAP_TIMEOUT:
+            self.lastLapTime = self.game.time
+            self.lap += 1
+
+            if self.game.settings['sound-effects']['enabled']:
+                self.game.lapSound.play()
 
     # Crop the right vehicle image and save in camera vehicle image cache
     def crop(self, camera):
@@ -150,6 +172,8 @@ class Map:
 
     # Generate random map
     def generate(self):
+        self.laps = Config.DEFAULT_LAPS_AMOUNT
+
         self.noise = PerlinNoise()
         self.noiseX = random.randint(-1000000, 1000000)
         self.noiseY = random.randint(-1000000, 1000000)
@@ -182,6 +206,8 @@ class Map:
 
         map = Map(data['name'], data['width'], data['height'])
 
+        map.laps = data['laps']
+
         map.noise = PerlinNoise()
         map.noiseX = data['noise']['x']
         map.noiseY = data['noise']['y']
@@ -210,6 +236,8 @@ class Map:
                 'width': self.width,
                 'height': self.height,
 
+                'laps': self.laps,
+
                 'noise': {
                     'x': self.noiseX,
                     'y': self.noiseY
@@ -223,9 +251,9 @@ class Map:
     # Generate terrain tile
     def generate_terrain_tile(self, x, y):
         n = self.noise.noise((x + (self.noiseX - self.width // 2)) / 20, (y + (self.noiseY - self.height // 2)) / 20, 2)
-        if n > 0.2:
+        if n > 0.25:
             return 2
-        if n > 0.075:
+        if n > 0.05:
             return 1
         return 0
 
@@ -438,6 +466,33 @@ class Map:
 
                     else:
                         self.blendedTrack[y][x] = 13
+
+                # Checkpoint track tile
+                if self.track[y][x] == 3:
+                    # Open
+                    if (y != 0 and self.track[y - 1][x] == 3) and (y != self.height - 1 and self.track[y + 1][x] == 3):
+                        self.blendedTrack[y][x] = 20
+                    elif (x != 0 and self.track[y][x - 1] == 3) and (x != self.width - 1 and self.track[y][x + 1] == 3):
+                        self.blendedTrack[y][x] = 21
+
+                    # Straight border
+                    elif (y == 0 or self.track[y - 1][x] == 0) and (y != self.height - 1 and self.track[y + 1][x] == 3):
+                        self.blendedTrack[y][x] = 22
+                    elif (y == self.height - 1 or self.track[y + 1][x] == 0) and (y != 0 and self.track[y - 1][x] == 3):
+                        self.blendedTrack[y][x] = 23
+                    elif (x == 0 or self.track[y][x - 1] == 0) and (x != self.width - 1 and self.track[y][x + 1] == 3):
+                        self.blendedTrack[y][x] = 24
+                    elif (x == self.width - 1 or self.track[y][x + 1] == 0) and (x != 0 and self.track[y][x - 1] == 3):
+                        self.blendedTrack[y][x] = 25
+
+                    # Closed
+                    elif (y == 0 or self.track[y - 1][x] == 0) and (y == self.height - 1 or self.track[y + 1][x] == 0):
+                        self.blendedTrack[y][x] = 26
+                    elif (x == 0 or self.track[y][x - 1] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
+                        self.blendedTrack[y][x] = 27
+
+                    else:
+                        self.blendedTrack[y][x] = 21
     # Resize map
     def resize(self, width, height):
         old_width = self.width
