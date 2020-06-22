@@ -69,15 +69,20 @@ class Vehicle:
     TURNING_RIGHT = 2
 
     # Create vehicle
-    def __init__(self, game, id, vehicleType, color, map, x, y, angle):
+    def __init__(self, game, id, vehicleType, color, map, vehicles, x, y, angle):
         self.game = game
         self.id = id
         self.vehicleType = vehicleType
         self.color = color
         self.map = map
+        self.vehicles = vehicles
 
         self.lap = 1
-        self.lastLapTime = game.time
+        self.checkedCheckpoints = [ False for checkpoint in map.checkpoints ]
+
+        self.crashTime = None
+        self.lastCheckpoint = self.map.finish
+        self.crashed = False
 
         self.x = x
         self.y = y
@@ -89,8 +94,54 @@ class Vehicle:
         self.moving = Vehicle.NOT_MOVING
         self.turning = Vehicle.NOT_TURNING
 
+    # Check crash:
+    def check_crash(self):
+        # When no earlier crash time set time
+        if self.crashTime == None:
+            self.crashTime = self.game.time
+
+        # When crash timeout is hit
+        if self.game.time - self.crashTime > Config.OUTSIDE_TRACK_CRASH_TIMEOUT:
+            # Crash the vehicle
+            self.crashed = True
+            self.crashTime = self.game.time
+
+            # Play crash sound effect
+            if self.game.settings['sound-effects']['enabled']:
+                self.game.crashSound.play()
+
     # Update vehicle
     def update(self, delta, camera):
+        # When crashed
+        if self.crashed:
+            # Check crash animation timeout
+            if self.game.time - self.crashTime > 5 * Config.CRASH_ANIMATION_FRAME_TIME:
+                self.crashed = False
+                self.crashTime = None
+
+                # Teleport back to last checkpoint
+                if self.lastCheckpoint['height'] > self.lastCheckpoint['width']:
+                    self.x = (self.lastCheckpoint['x'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == 0:
+                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == 1:
+                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.angle = math.radians(270)
+                    self.velocity = 0
+                    self.acceleration = 0
+                else:
+                    if self.id == 0:
+                        self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == 1:
+                        self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height']) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.angle = 0
+                    self.velocity = 0
+                    self.acceleration = 0
+
+            # Stop doing anything else
+            return
+
         # Handle turning
         if self.turning == Vehicle.TURNING_LEFT:
             self.angle += self.vehicleType['turningSpeed'] * delta
@@ -125,18 +176,72 @@ class Vehicle:
         tileX = math.floor(self.x / camera.tileSize)
         tileY = math.floor(self.y / camera.tileSize)
 
-        # Check tile to be not a track tile
-        if self.map.track[tileY][tileX] == 0:
-            if self.game.settings['sound-effects']['enabled']:
-                self.game.crashSound.play()
+        # Check if the car is inside the map
+        if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
+            # Check crash when no on a track tile
+            if self.map.track[tileY][tileX] == 0:
+                self.check_crash()
+            else:
+                self.crashTime = None
 
-        # Check tile to be a finish tile
-        if self.map.track[tileY][tileX] == 2 and self.game.time - self.lastLapTime >= Config.DEFAULT_LAP_TIMEOUT:
-            self.lastLapTime = self.game.time
-            self.lap += 1
+            # When tile is a finish tile
+            if self.map.track[tileY][tileX] == 2:
+                self.lastCheckpoint = self.map.finish
 
-            if self.game.settings['sound-effects']['enabled']:
-                self.game.lapSound.play()
+                # Check if all checkpoints are checked
+                allChecked = True
+                for checked in self.checkedCheckpoints:
+                    if not checked:
+                        allChecked = False
+                        break
+
+                # If so go to the next lap
+                if allChecked:
+                    self.lap += 1
+                    self.checkedCheckpoints = [ False for checkpoint in self.map.checkpoints ]
+
+                    if self.game.settings['sound-effects']['enabled']:
+                        self.game.lapSound.play()
+
+            # When tile is a checkpoint tile
+            if self.map.track[tileY][tileX] == 3:
+                # Check which checkpoint it is
+                for i, checkpoint in enumerate(self.map.checkpoints):
+                    if (
+                        tileX >= checkpoint['x'] and tileY >= checkpoint['y'] and
+                        tileX < checkpoint['x'] + checkpoint['width'] and tileY < checkpoint['y'] + checkpoint['height']
+                    ):
+                        self.lastCheckpoint = checkpoint
+
+                        # Check checkpoint if not already checked
+                        if not self.checkedCheckpoints[i]:
+                            self.checkedCheckpoints[i] = True
+
+                            if self.game.settings['sound-effects']['enabled']:
+                                self.game.checkpointSound.play()
+                        break
+
+        # If out side map also check crash
+        else:
+            self.check_crash()
+
+        # Check if vehicles are to close to crash
+        for vehicle in self.vehicles:
+            if vehicle != self:
+                # Calculate distence between two vehicles
+                distence = math.sqrt((self.x - vehicle.x) ** 2 + (self.y - vehicle.y) ** 2)
+
+                # If to close crash both
+                if distence < max(self.vehicleType['width'], self.vehicleType['height']) / 3 * 2:
+                    self.crashed = True
+                    self.crashTime = self.game.time
+
+                    vehicle.crashed = True
+                    vehicle.crashTime = vehicle.game.time
+
+                    # Play crash sound effect
+                    if self.game.settings['sound-effects']['enabled']:
+                        self.game.crashSound.play()
 
     # Crop the right vehicle image and save in camera vehicle image cache
     def crop(self, camera):
@@ -153,15 +258,33 @@ class Vehicle:
 
     # Draw vehicle
     def draw(self, surface, camera):
-        # Rotate vehicle image and draw
-        rotatedVehicleImage = pygame.transform.rotate(camera.vehicleImageCache[self.id], math.degrees(self.angle))
-        x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() / 2))
-        y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() / 2))
-        if (
-            x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
-            x - rotatedVehicleImage.get_width() < surface.get_width() and y - rotatedVehicleImage.get_height() < surface.get_height()
-        ):
-            surface.blit(rotatedVehicleImage, ( x, y ))
+        # When crashed draw crash animation
+        if self.crashed:
+            # Calculate crash animation frame position
+            x = math.floor(self.x - Config.TILE_SPRITE_SIZE / 2 - (camera.x - surface.get_width() / 2))
+            y = math.floor(self.y - Config.TILE_SPRITE_SIZE / 2 - (camera.y - surface.get_height() / 2))
+
+            # Draw if visible
+            if (
+                x + Config.TILE_SPRITE_SIZE >= 0 and y + Config.TILE_SPRITE_SIZE >= 0 and
+                x - Config.TILE_SPRITE_SIZE < surface.get_width() and y - Config.TILE_SPRITE_SIZE < surface.get_height()
+            ):
+                surface.blit(self.game.explosionImage, ( x, y ),
+                    ( math.floor((self.game.time - self.crashTime) / Config.CRASH_ANIMATION_FRAME_TIME) * Config.TILE_SPRITE_SIZE, 0, Config.TILE_SPRITE_SIZE, Config.TILE_SPRITE_SIZE ))
+
+        # Else draw vehicle
+        else:
+            # Rotate vehicle image
+            rotatedVehicleImage = pygame.transform.rotate(camera.vehicleImageCache[self.id], math.degrees(self.angle))
+            x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() / 2))
+            y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() / 2))
+
+            # Draw if visible
+            if (
+                x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
+                x - rotatedVehicleImage.get_width() < surface.get_width() and y - rotatedVehicleImage.get_height() < surface.get_height()
+            ):
+                surface.blit(rotatedVehicleImage, ( x, y ))
 
 # The map class
 class Map:
@@ -353,43 +476,30 @@ class Map:
                     self.blendedTerrain[y][x] = 26
 
     # Find map finish start point
-    def find_start_point(self):
+    def find_finish(self):
         for y in range(self.height):
             for x in range(self.width):
                 if self.track[y][x] == 2:
-                    if (x == 0 or self.track[y][x - 1] == 0) and (x == self.width - 1 or self.track[y][x + 1] == 0):
-                        self.startX = x
-                        self.startY = y
-                        self.startAngle = 0
+                    width = 0
+                    for i in range(self.width):
+                        if x + i != self.width - 1 and self.track[y][x + i] == 2:
+                            width += 1
+                        else:
+                            break
 
-                    if x != self.width - 1 and self.track[y][x + 1] == 2:
-                        width = 0
-                        for i in range(self.width):
-                            if x + i != self.width - 1 and self.track[y][x + i] == 2:
-                                width += 1
-                            else:
-                                break
+                    height = 0
+                    for i in range(self.height):
+                        if y + i != self.height - 1 and self.track[y + i][x] == 2:
+                            height += 1
+                        else:
+                            break
 
-                        self.startX = x + (width // 2 - 1)
-                        self.startY = y
-                        self.startAngle = 0
-
-                    if (y == 0 or self.track[y - 1][x] == 0) and (y == self.height - 1 or self.track[y + 1][x] == 0):
-                        self.startX = x
-                        self.startY = y
-                        self.startAngle = math.radians(270)
-
-                    if y != self.height - 1 and self.track[y + 1][x] == 2:
-                        height = 0
-                        for i in range(self.height):
-                            if y + i != self.height - 1 and self.track[y + i][x] == 2:
-                                height += 1
-                            else:
-                                break
-
-                        self.startX = x
-                        self.startY = y + (height // 2 - 1)
-                        self.startAngle = math.radians(270)
+                    self.finish = {
+                        'x': x,
+                        'y': y,
+                        'width': width,
+                        'height': height
+                    }
 
                     return True
 
@@ -397,13 +507,56 @@ class Map:
 
     # Blend track
     def blend_track(self, showNoFinishMessage):
-        # Find map start point
-        if not self.find_start_point():
+        # Find map finish
+        if not self.find_finish():
             if showNoFinishMessage:
-                tkinter.messagebox.showinfo('Map has no finish!', 'This map has no finish set start point to map center')
-            self.startX = self.width // 2
-            self.startY = self.height // 2
-            self.startAngle = math.radians(270)
+                tkinter.messagebox.showinfo('Map has no finish!', 'This map has no finish set start point / finish to map center')
+            self.finish = {
+                'x': self.width // 2,
+                'y': self.height // 2,
+                'width': 1,
+                'height': 2
+            }
+
+        # Find checkpoints
+        self.checkpoints = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.track[y][x] == 3:
+                    # Check if checkpoint already exists
+                    alreadyExists = False
+                    for checkpoint in self.checkpoints:
+                        if (
+                            x >= checkpoint['x'] and y >= checkpoint['y'] and
+                            x < checkpoint['x'] + checkpoint['width'] and y < checkpoint['y'] + checkpoint['height']
+                        ):
+                            alreadyExists = True
+                            break
+
+                    # Else add checkpoint
+                    if not alreadyExists:
+                        width = 0
+                        for i in range(self.width):
+                            if x + i != self.width - 1 and self.track[y][x + i] == 3:
+                                width += 1
+                            else:
+                                break
+
+                        height = 0
+                        for i in range(self.height):
+                            if y + i != self.height - 1 and self.track[y + i][x] == 3:
+                                height += 1
+                            else:
+                                break
+
+                        self.checkpoints.append({
+                            'x': x,
+                            'y': y,
+                            'width': width,
+                            'height': height
+                        })
+
+                        x += width
 
         # Blend track tiles
         self.blendedTrack = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]

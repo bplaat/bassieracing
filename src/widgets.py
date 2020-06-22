@@ -671,8 +671,8 @@ class MapEditor:
     # Center camera
     def center_camera(self, cameraX = None, cameraY = None):
         self.camera = Camera(
-            cameraX if cameraX != None else self.map.startX * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
-            cameraY if cameraY != None else self.map.startY * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            cameraX if cameraX != None else (self.map.finish['x'] + self.map.finish['width'] // 2) * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            cameraY if cameraY != None else (self.map.finish['y'] + self.map.finish['height'] // 2) * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
             self.game.tilesImage, Config.EDITOR_TILE_SIZE, self.game.vehiclesImage, None, self.grid
         )
 

@@ -123,7 +123,7 @@ class MenuPage(Page):
         y += 64 + 16
         self.widgets.append(Button(self.game, 'Exit', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
 
-        self.widgets.append(Label(self.game, 'v' + Config.VERSION, self.game.width - 16 - 128, 16, 128, 32, self.game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
+        self.widgets.append(Label(self.game, 'v' + Config.VERSION, self.game.width - 16 - 256, 16, 256, 32, self.game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
         self.widgets.append(Label(self.game, 'Made by Bastiaan van der Plaat', 0, self.game.height - 64 - 16, self.game.width, 64, self.game.textFont, Color.WHITE, TextAlign.CENTER, self.footer_label_clicked))
 
     # Version label clicked
@@ -233,22 +233,40 @@ class GamePage(Page):
         # Set map
         self.map = map
 
-        # Init the vehicles
+        # Create the vehicles
         self.vehicles = []
 
-        self.leftVehicle = Vehicle(game, 0, leftVehicleType, 0, map,
-            map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-            map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-            map.startAngle
-        )
-        self.vehicles.append(self.leftVehicle)
+        # Check if finish is horizontal
+        if map.finish['height'] > map.finish['width']:
+            self.leftVehicle = Vehicle(game, 0, leftVehicleType, 0, map, self.vehicles,
+                (map.finish['x'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                (map.finish['y'] + map.finish['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                math.radians(270)
+            )
+            self.vehicles.append(self.leftVehicle)
 
-        self.rightVehicle = Vehicle(game, 1, rightVehicleType, 1, map,
-            map.startX * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * (1.5 if map.startAngle == 0 else 0.5),
-            map.startY * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE * (1.5 if map.startAngle == math.radians(270) else 0.5),
-            map.startAngle
-        )
-        self.vehicles.append(self.rightVehicle)
+            self.rightVehicle = Vehicle(game, 1, rightVehicleType, 1, map, self.vehicles,
+                (map.finish['x'] - 1)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                (map.finish['y'] + map.finish['height'] // 2)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                math.radians(270)
+            )
+            self.vehicles.append(self.rightVehicle)
+
+        # Or when the finish is vertical
+        else:
+            self.leftVehicle = Vehicle(game, 0, leftVehicleType, 0, map, self.vehicles,
+                (map.finish['x'] + map.finish['width'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                (map.finish['y'] + map.finish['height']) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                0
+            )
+            self.vehicles.append(self.leftVehicle)
+
+            self.rightVehicle = Vehicle(game, 1, rightVehicleType, 1, map, self.vehicles,
+                (map.finish['x'] + map.finish['width'] // 2)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                (map.finish['y'] + map.finish['height'])  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                0
+            )
+            self.vehicles.append(self.rightVehicle)
 
         # Create page
         Page.__init__(self, game, Color.BLACK)
@@ -334,6 +352,9 @@ class EditorPage(Page):
 
     # New button clicked
     def new_button_clicked(self):
+        self.file_path = None
+
+        # When standard size
         for i, size in enumerate(Config.MAP_SIZES):
             if i == self.sizeComboBox.selectedOptionIndex:
                 self.map = Map('Custom Map', size, size)
@@ -343,7 +364,6 @@ class EditorPage(Page):
                 return
 
         # When custom size
-        self.file_path = None
         self.map = Map('Custom Map', 32, 32)
         self.map.generate()
         self.mapEditor.map = self.map
@@ -441,16 +461,23 @@ class SettingsPage(Page):
 
     # Create settings page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + 16 + 64 + 16 + 64 + 24 + 64)) // 2
+        y = (self.game.height - (96 + (64 + 16) * 3 + 24 + 64)) // 2
         self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
+        self.widgets.append(ToggleButton(self.game, [ 'Intro disabled', 'Intro enabled' ], self.game.settings['intro']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.intro_toggle_button_changed))
+        y += 64 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Fancy music disabled', 'Fancy music enabled' ], self.game.settings['music']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.music_toggle_button_changed))
         y += 64 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Sound effects disabled', 'Sound effects enabled' ], self.game.settings['sound-effects']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.sound_effects_toggle_button_changed))
         y += 64 + 24
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
-    # Sound effects toggle button changed
+    # Intro toggle button changed
+    def intro_toggle_button_changed(self, active):
+        self.game.settings['intro']['enabled'] = active
+        self.game.save_settings()
+
+    # Music toggle button changed
     def music_toggle_button_changed(self, active):
         self.game.settings['music']['enabled'] = active
         self.game.save_settings()

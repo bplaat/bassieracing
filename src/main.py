@@ -64,6 +64,9 @@ class Game:
         else:
             self.settings = {
                 'type': 'BassieRacing Settings',
+                'intro': {
+                    'enabled': True
+                },
                 'music': {
                     'enabled': True,
                     'position': 0
@@ -78,8 +81,11 @@ class Game:
         self.tkinter_window = tkinter.Tk()
         self.tkinter_window.withdraw()
 
-        # Create intro page
-        self.page = IntroPage(self)
+        # Create intro or menu page
+        if self.settings['intro']['enabled']:
+            self.page = IntroPage(self)
+        else:
+            self.page = MenuPage(self)
 
     # Save settings to file
     def save_settings(self):
