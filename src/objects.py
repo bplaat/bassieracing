@@ -115,7 +115,7 @@ class Vehicle:
         # When crashed
         if self.crashed:
             # Check crash animation timeout
-            if self.game.time - self.crashTime > 5 * Config.CRASH_ANIMATION_FRAME_TIME:
+            if self.game.time - self.crashTime > Config.EXPLOSION_ANIMATION_FRAME_COUNT * Config.EXPLOSION_ANIMATION_FRAME_TIME:
                 self.crashed = False
                 self.crashTime = None
 
@@ -172,20 +172,32 @@ class Vehicle:
         self.x -= self.velocity * math.sin(self.angle) * delta
         self.y -= self.velocity * math.cos(self.angle) * delta
 
+        # Prevent out the map driving
+        if self.x < 0:
+            self.x = 0
+        if self.y < 0:
+            self.y = 0
+        if self.x > self.map.width * camera.tileSize:
+            self.x = self.map.width * camera.tileSize
+        if self.y > self.map.height * camera.tileSize:
+            self.y = self.map.height * camera.tileSize
+
         # Caculate standing tile cordinates
-        tileX = math.floor(self.x / camera.tileSize)
-        tileY = math.floor(self.y / camera.tileSize)
+        tile = {
+            'x': math.floor(self.x / camera.tileSize),
+            'y': math.floor(self.y / camera.tileSize)
+        }
 
         # Check if the car is inside the map
-        if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
+        if tile['x'] >= 0 and tile['y'] >= 0 and tile['x'] < self.map.width and tile['y'] < self.map.height:
             # Check crash when no on a track tile
-            if self.map.track[tileY][tileX] == 0:
+            if self.map.track[tile['y']][tile['x']] == 0 and self.map.enableCrashes:
                 self.check_crash()
             else:
                 self.crashTime = None
 
             # When tile is a finish tile
-            if self.map.track[tileY][tileX] == 2:
+            if self.map.track[tile['y']][tile['x']] == 2:
                 self.lastCheckpoint = self.map.finish
 
                 # Check if all checkpoints are checked
@@ -204,12 +216,12 @@ class Vehicle:
                         self.game.lapSound.play()
 
             # When tile is a checkpoint tile
-            if self.map.track[tileY][tileX] == 3:
+            if self.map.track[tile['y']][tile['x']] == 3:
                 # Check which checkpoint it is
                 for i, checkpoint in enumerate(self.map.checkpoints):
                     if (
-                        tileX >= checkpoint['x'] and tileY >= checkpoint['y'] and
-                        tileX < checkpoint['x'] + checkpoint['width'] and tileY < checkpoint['y'] + checkpoint['height']
+                        tile['x'] >= checkpoint['x'] and tile['y'] >= checkpoint['y'] and
+                        tile['x'] < checkpoint['x'] + checkpoint['width'] and tile['y'] < checkpoint['y'] + checkpoint['height']
                     ):
                         self.lastCheckpoint = checkpoint
 
@@ -222,26 +234,27 @@ class Vehicle:
                         break
 
         # If out side map also check crash
-        else:
+        elif self.map.enableCrashes:
             self.check_crash()
 
         # Check if vehicles are to close to crash
-        for vehicle in self.vehicles:
-            if vehicle != self:
-                # Calculate distence between two vehicles
-                distence = math.sqrt((self.x - vehicle.x) ** 2 + (self.y - vehicle.y) ** 2)
+        if self.map.enableCrashes:
+            for vehicle in self.vehicles:
+                if vehicle != self:
+                    # Calculate distence between two vehicles
+                    distence = math.sqrt((self.x - vehicle.x) ** 2 + (self.y - vehicle.y) ** 2)
 
-                # If to close crash both
-                if distence < max(self.vehicleType['width'], self.vehicleType['height']) / 3 * 2:
-                    self.crashed = True
-                    self.crashTime = self.game.time
+                    # If to close crash both
+                    if distence < max(self.vehicleType['width'], self.vehicleType['height']) / 3 * 2:
+                        self.crashed = True
+                        self.crashTime = self.game.time
 
-                    vehicle.crashed = True
-                    vehicle.crashTime = vehicle.game.time
+                        vehicle.crashed = True
+                        vehicle.crashTime = vehicle.game.time
 
-                    # Play crash sound effect
-                    if self.game.settings['sound-effects']['enabled']:
-                        self.game.crashSound.play()
+                        # Play crash sound effect
+                        if self.game.settings['sound-effects']['enabled']:
+                            self.game.crashSound.play()
 
     # Crop the right vehicle image and save in camera vehicle image cache
     def crop(self, camera):
@@ -270,7 +283,7 @@ class Vehicle:
                 x - Config.TILE_SPRITE_SIZE < surface.get_width() and y - Config.TILE_SPRITE_SIZE < surface.get_height()
             ):
                 surface.blit(self.game.explosionImage, ( x, y ),
-                    ( math.floor((self.game.time - self.crashTime) / Config.CRASH_ANIMATION_FRAME_TIME) * Config.TILE_SPRITE_SIZE, 0, Config.TILE_SPRITE_SIZE, Config.TILE_SPRITE_SIZE ))
+                    ( math.floor((self.game.time - self.crashTime) / Config.EXPLOSION_ANIMATION_FRAME_TIME) * Config.TILE_SPRITE_SIZE, 0, Config.TILE_SPRITE_SIZE, Config.TILE_SPRITE_SIZE ))
 
         # Else draw vehicle
         else:
@@ -295,11 +308,14 @@ class Map:
 
     # Generate random map
     def generate(self):
-        self.laps = Config.DEFAULT_LAPS_AMOUNT
+        self.laps = Config.DEFAULT_LAPS_COUNT
+        self.enableCrashes = True
 
-        self.noise = PerlinNoise()
-        self.noiseX = random.randint(-1000000, 1000000)
-        self.noiseY = random.randint(-1000000, 1000000)
+        self.noise = {
+            'perlin': PerlinNoise(),
+            'x': random.randint(-1000000, 1000000),
+            'y': random.randint(-1000000, 1000000)
+        }
 
         self.terrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
         for y in range(self.height):
@@ -330,10 +346,13 @@ class Map:
         map = Map(data['name'], data['width'], data['height'])
 
         map.laps = data['laps']
+        map.enableCrashes = data['enableCrashes']
 
-        map.noise = PerlinNoise()
-        map.noiseX = data['noise']['x']
-        map.noiseY = data['noise']['y']
+        map.noise = {
+            'perlin': PerlinNoise(),
+            'x': data['noise']['x'],
+            'y': data['noise']['y']
+        }
 
         map.terrain = data['terrain']
         map.blend_terrain()
@@ -360,10 +379,11 @@ class Map:
                 'height': self.height,
 
                 'laps': self.laps,
+                'enableCrashes': self.enableCrashes,
 
                 'noise': {
-                    'x': self.noiseX,
-                    'y': self.noiseY
+                    'x': self.noise['x'],
+                    'y': self.noise['y']
                 },
 
                 'terrain': self.terrain,
@@ -373,7 +393,7 @@ class Map:
 
     # Generate terrain tile
     def generate_terrain_tile(self, x, y):
-        n = self.noise.noise((x + (self.noiseX - self.width // 2)) / 20, (y + (self.noiseY - self.height // 2)) / 20, 2)
+        n = self.noise['perlin'].noise((x + (self.noise['x'] - self.width // 2)) / 20, (y + (self.noise['y'] - self.height // 2)) / 20, 2)
         if n > 0.25:
             return 2
         if n > 0.05:
@@ -700,18 +720,20 @@ class Map:
         for y in range(self.height):
             for x in range(self.width):
                 tileType = terrainTiles[self.blendedTerrain[y][x]]
-                tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
-                ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
-                if tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and tx < surface.get_width() and ty < surface.get_height():
+                tile = {
+                    'x': math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2)),
+                    'y': math.floor(y * camera.tileSize - (camera.y - surface.get_height() / 2))
+                }
+                if tile['x'] + camera.tileSize >= 0 and tile['y'] + camera.tileSize >= 0 and tile['x'] < surface.get_width() and tile['y'] < surface.get_height():
                     if camera.grid:
-                        surface.blit(camera.tilesImage, ( tx + 1, ty + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
+                        surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
                             math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                             math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                             camera.tileSize - 1,
                             camera.tileSize - 1
                         ))
                     else:
-                        surface.blit(camera.tilesImage, ( tx, ty, camera.tileSize, camera.tileSize ), (
+                        surface.blit(camera.tilesImage, ( tile['x'], tile['y'], camera.tileSize, camera.tileSize ), (
                             math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                             math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                             camera.tileSize,
@@ -724,21 +746,23 @@ class Map:
                 trackId = self.blendedTrack[y][x]
                 if trackId != 0:
                     tileType = trackTiles[trackId]
-                    tx = math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2))
-                    ty = math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
+                    tile = {
+                        'x': math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2)),
+                        'y': math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
+                    }
                     if (
-                        tx + camera.tileSize >= 0 and ty + camera.tileSize >= 0 and
-                        tx < surface.get_width() and ty < surface.get_height()
+                        tile['x'] + camera.tileSize >= 0 and tile['y'] + camera.tileSize >= 0 and
+                        tile['x'] < surface.get_width() and tile['y'] < surface.get_height()
                     ):
                         if camera.grid:
-                            surface.blit(camera.tilesImage, ( tx + 1, ty + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
+                            surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
                                 math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                                 math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                                 camera.tileSize - 1,
                                 camera.tileSize - 1
                             ))
                         else:
-                            surface.blit(camera.tilesImage, ( tx, ty, camera.tileSize, camera.tileSize ), (
+                            surface.blit(camera.tilesImage, ( tile['x'], tile['y'], camera.tileSize, camera.tileSize ), (
                                 math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                                 math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                                 camera.tileSize,

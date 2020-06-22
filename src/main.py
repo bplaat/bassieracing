@@ -115,6 +115,10 @@ class Game:
             self.save_settings()
             self.running = False
 
+    # Focus the game window
+    def focus(self):
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF| pygame.RESIZABLE)
+
     # The game loop
     def start(self):
         lastTime = time.time()

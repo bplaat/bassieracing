@@ -655,7 +655,7 @@ class MapEditor:
     TOOL_LABELS =  [ 'Grass Brush', 'Dirt Brush', 'Sand Brush', 'Asphalt Brush', 'Finish Brush', 'Checkpoint Brush', 'Track Eraser' ]
 
     # Create map editor
-    def __init__(self, game, map, x, y, width, height, tool, grid, cameraX = None, cameraY = None):
+    def __init__(self, game, map, x, y, width, height, tool, grid, camera = None):
         self.game = game
         self.map = map
         self.x = x
@@ -664,50 +664,52 @@ class MapEditor:
         self.height = height
         self.tool = tool
         self.grid = grid
-        self.center_camera(cameraX, cameraY)
+        self.center_camera(camera)
         self.mouseDown = False
         self.surface = pygame.Surface(( width, height ))
 
     # Center camera
-    def center_camera(self, cameraX = None, cameraY = None):
+    def center_camera(self, camera = None):
         self.camera = Camera(
-            cameraX if cameraX != None else (self.map.finish['x'] + self.map.finish['width'] // 2) * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
-            cameraY if cameraY != None else (self.map.finish['y'] + self.map.finish['height'] // 2) * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            camera['x'] if camera != None and camera['x'] != None else (self.map.finish['x'] + self.map.finish['width'] // 2) * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
+            camera['y'] if camera != None and camera['y'] != None else (self.map.finish['y'] + self.map.finish['height'] // 2) * Config.EDITOR_TILE_SIZE + Config.EDITOR_TILE_SIZE / 2,
             self.game.tilesImage, Config.EDITOR_TILE_SIZE, self.game.vehiclesImage, None, self.grid
         )
 
     # Use tool
-    def use_tool(self, mouseX, mouseY):
-        tileX = math.floor((mouseX + self.camera.x - self.width / 2) / Config.EDITOR_TILE_SIZE)
-        tileY = math.floor((mouseY + self.camera.y - self.height / 2) / Config.EDITOR_TILE_SIZE)
+    def use_tool(self, mouse):
+        tile = {
+            'x': math.floor((mouse['x'] + self.camera.x - self.width / 2) / Config.EDITOR_TILE_SIZE),
+            'y': math.floor((mouse['y'] + self.camera.y - self.height / 2) / Config.EDITOR_TILE_SIZE)
+        }
 
-        if tileX >= 0 and tileY >= 0 and tileX < self.map.width and tileY < self.map.height:
+        if tile['x'] >= 0 and tile['y'] >= 0 and tile['x'] < self.map.width and tile['y'] < self.map.height:
             if self.tool == MapEditor.GRASS_BRUSH:
-                self.map.terrain[tileY][tileX] = 0
+                self.map.terrain[tile['y']][tile['x']] = 0
                 self.map.blend_terrain()
 
             if self.tool == MapEditor.DIRT_BRUSH:
-                self.map.terrain[tileY][tileX] = 1
+                self.map.terrain[tile['y']][tile['x']] = 1
                 self.map.blend_terrain()
 
             if self.tool == MapEditor.SAND_BRUSH:
-                self.map.terrain[tileY][tileX] = 2
+                self.map.terrain[tile['y']][tile['x']] = 2
                 self.map.blend_terrain()
 
             if self.tool == MapEditor.ASPHALT_BRUSH:
-                self.map.track[tileY][tileX] = 1
+                self.map.track[tile['y']][tile['x']] = 1
                 self.map.blend_track(False)
 
             if self.tool == MapEditor.FINISH_BRUSH:
-                self.map.track[tileY][tileX] = 2
+                self.map.track[tile['y']][tile['x']] = 2
                 self.map.blend_track(False)
 
             if self.tool == MapEditor.CHECKPOINT_BRUSH:
-                self.map.track[tileY][tileX] = 3
+                self.map.track[tile['y']][tile['x']] = 3
                 self.map.blend_track(False)
 
             if self.tool == MapEditor.TRACK_ERASER:
-                self.map.track[tileY][tileX] = 0
+                self.map.track[tile['y']][tile['x']] = 0
                 self.map.blend_track(False)
 
     # Handle page events
@@ -715,21 +717,23 @@ class MapEditor:
         # Handle mousedown events
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.mouseDown = True
-            self.use_tool(event.pos[0], event.pos[1])
+            self.use_tool({ 'x': event.pos[0], 'y': event.pos[1] })
             return True
 
         # Handle mousemove events
         if event.type == pygame.MOUSEMOTION:
-            mouseX = event.pos[0]
-            mouseY = event.pos[1]
+            mouse = {
+                'x': event.pos[0],
+                'y': event.pos[1]
+            }
 
             if self.mouseDown:
-                self.use_tool(mouseX, mouseY)
+                self.use_tool(mouse)
             else:
-                self.camera.movingUp = mouseY >= 2 and mouseY < Config.EDITOR_CAMERA_BORDER
-                self.camera.movingDown = mouseY >= self.game.height - Config.EDITOR_CAMERA_BORDER and mouseY < self.game.height - 2
-                self.camera.movingLeft = mouseX >= 2 and mouseX < Config.EDITOR_CAMERA_BORDER
-                self.camera.movingRight = mouseX >= self.game.width - Config.EDITOR_CAMERA_BORDER and mouseX < self.game.width - 2
+                self.camera.movingUp = mouse['y'] >= 2 and mouse['y'] < Config.EDITOR_CAMERA_BORDER
+                self.camera.movingDown = mouse['y'] >= self.game.height - Config.EDITOR_CAMERA_BORDER and mouse['y'] < self.game.height - 2
+                self.camera.movingLeft = mouse['x'] >= 2 and mouse['x'] < Config.EDITOR_CAMERA_BORDER
+                self.camera.movingRight = mouse['x'] >= self.game.width - Config.EDITOR_CAMERA_BORDER and mouse['x'] < self.game.width - 2
 
             return True
 

@@ -184,6 +184,7 @@ class SelectMapPage(Page):
     def load_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to load...', filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path:
+            self.game.focus()
             self.customMapPaths.append(file_path)
             self.mapSelector.load_map(file_path)
 
@@ -300,18 +301,18 @@ class EditorPage(Page):
     # Create edit page
     def __init__(self, game):
         self.file_path = None
+        pygame.display.set_caption('Unsaved - BassieRacing')
         self.map = Map('Custom Map', 32, 32)
         self.map.generate()
         self.grid = False
-        self.mapCameraX = None
-        self.mapCameraY = None
+        self.mapCamera = { 'x': None, 'y': None }
         self.selectedSizeIndex = 1
         self.selectedBrushIndex = 3
         Page.__init__(self, game, Color.DARK)
 
     # Create edit page widgets
     def create_widgets(self):
-        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, self.selectedBrushIndex, self.grid, self.mapCameraX, self.mapCameraY)
+        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, self.selectedBrushIndex, self.grid, self.mapCamera)
         self.widgets.append(self.mapEditor)
 
         self.widgets.append(Button(self.game, 'New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
@@ -347,12 +348,13 @@ class EditorPage(Page):
     # Update map editor widget
     def update(self, delta):
         self.mapEditor.update(delta)
-        self.mapCameraX = self.mapEditor.camera.x
-        self.mapCameraY = self.mapEditor.camera.y
+        self.mapCamera['x'] = self.mapEditor.camera.x
+        self.mapCamera['y'] = self.mapEditor.camera.y
 
     # New button clicked
     def new_button_clicked(self):
         self.file_path = None
+        pygame.display.set_caption('Unsaved - BassieRacing')
 
         # When standard size
         for i, size in enumerate(Config.MAP_SIZES):
@@ -374,7 +376,9 @@ class EditorPage(Page):
     def open_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to open...', filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path:
+            self.game.focus()
             self.file_path = file_path
+            pygame.display.set_caption(file_path + ' - BassieRacing')
             self.map = Map.load_from_file(file_path)
             if self.map != None:
                 self.mapEditor.map = self.map
@@ -394,7 +398,9 @@ class EditorPage(Page):
         if self.file_path == None:
             file_path = tkinter.filedialog.asksaveasfilename(title='Select a location to save the BassieRacing Map...', filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
             if file_path:
+                self.game.focus()
                 self.file_path = file_path
+                pygame.display.set_caption(file_path + ' - BassieRacing')
 
         if self.file_path != None:
             self.map.save_to_file(self.file_path)
@@ -407,6 +413,7 @@ class EditorPage(Page):
 
     # Back button clicked
     def back_button_clicked(self):
+        pygame.display.set_caption('BassieRacing')
         self.game.page = MenuPage(self.game)
 
     # Size combo box changed
