@@ -275,23 +275,28 @@ class MiniMap:
         self.height = height
         self.game = game
         self.vehicles = vehicles
-        self.set_map(map)
         self.surface = pygame.Surface(( width, height ), pygame.SRCALPHA)
+        self.set_map(map)
 
     # Set map
     def set_map(self, map):
         self.map = map
         self.tileSize = self.width // map.width
-        self.vehicleScale = 0.2
+        self.vehicleScale = (self.tileSize * 5) / Config.TILE_SPRITE_SIZE
         self.camera = Camera(
             (map.width * self.tileSize) / 2,
             (map.height * self.tileSize) / 2,
             self.game.tilesImage, self.tileSize,
             self.game.vehiclesImage, self.vehicleScale
         )
+
         if self.vehicles != None:
             for vehicle in self.vehicles:
-                vehicle.crop(self.camera)
+                vehicle.cropImage(self.camera)
+
+        # Draw the map tiles once for performace
+        self.surface.fill(Color.TRANSPARENT)
+        self.map.draw(self.surface, self.camera)
 
     # Handle mini map events
     def handle_event(self, event):
@@ -299,15 +304,12 @@ class MiniMap:
 
     # Draw mini map
     def draw(self, surface):
-        # Clear surface
-        self.surface.fill(Color.TRANSPARENT)
-
-        # Draw the map
-        self.map.draw(self.surface, self.camera)
-
-        # Draw the vehicles if given
+        # Draw vehicles if given
         if self.vehicles != None:
-            # TODO
+            # Copy the surface to draw the vehicles
+            surfaceCopy = self.surface.copy()
+
+            # Draw the vehicles if given
             for vehicle in self.vehicles:
                 rotatedVehicleImage = pygame.transform.rotate(self.camera.vehicleImageCache[vehicle.id], math.degrees(vehicle.angle))
                 x = math.floor((vehicle.x / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_width() / 2 - (self.camera.x - self.width / 2))
@@ -316,10 +318,13 @@ class MiniMap:
                     x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
                     x - rotatedVehicleImage.get_width() < self.width and y - rotatedVehicleImage.get_height() < self.height
                 ):
-                    self.surface.blit(rotatedVehicleImage, ( x, y ))
+                    surfaceCopy.blit(rotatedVehicleImage, ( x, y ))
 
-        # Draw surface
-        surface.blit(self.surface, ( self.x, self.y ))
+            # Draw surface
+            surface.blit(surfaceCopy, ( self.x, self.y ))
+        else:
+            # Draw surface
+            surface.blit(self.surface, ( self.x, self.y ))
 
 # The map selector widget
 class MapSelector:
@@ -506,8 +511,7 @@ class VehicleSelector:
 
     # Update wigets
     def update_widgets(self):
-        vehicleImageSurface = pygame.Surface(( self.selectedVehicle['width'], self.selectedVehicle['height'] ), pygame.SRCALPHA)
-        vehicleImageSurface.blit(self.game.vehiclesImage, ( 0, 0 ),  (
+        vehicleImageSurface = self.game.vehiclesImage.subsurface((
             self.selectedVehicle['colors'][self.color]['x'],
             self.selectedVehicle['colors'][self.color]['y'],
             self.selectedVehicle['width'],
@@ -563,11 +567,11 @@ class VehicleViewport:
         self.surface = pygame.Surface(( width, height ))
         self.camera = Camera(self.vehicle.x, self.vehicle.y, self.game.tilesImage, Config.TILE_SPRITE_SIZE, self.game.vehiclesImage)
         for vehicle in self.vehicles:
-            vehicle.crop(self.camera)
+            vehicle.cropImage(self.camera)
 
         # Create vehicle viewport widgets
         self.widgets = []
-        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (vehicle.lap, map.laps), 24, height - 24 - 24 - 24 - 16, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
+        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (vehicle.lap + 1, map.laps), 24, height - 24 - 24 - 24 - 16, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.lapLabel)
         self.speedLabel = Label(self.game, 'Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
@@ -631,7 +635,7 @@ class VehicleViewport:
             vehicle.draw(self.surface, self.camera)
 
         # Update lap label
-        self.lapLabel.set_text('Lap: %d/%d' % (self.vehicle.lap, self.map.laps))
+        self.lapLabel.set_text('Lap: %d/%d' % (self.vehicle.lap + 1, self.map.laps))
 
         # Update speed label
         self.speedLabel.set_text('Speed: %d km/h' % (self.vehicle.velocity / Config.PIXELS_PER_METER * 3.6))

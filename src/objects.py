@@ -12,32 +12,22 @@ import tkinter.messagebox
 
 # The camera class
 class Camera:
-    def __init__(self, x, y, tilesImage, tileSize, vehiclesImage, vehicleScale = None, grid = False):
+    def __init__(self, x, y, tilesImage, tileSize, vehiclesImage, vehicleScale = 1, grid = False):
         self.x = x
         self.y = y
 
         if tileSize == Config.TILE_SPRITE_SIZE:
             self.tilesImage = tilesImage
         else:
-            self.tilesImage = pygame.transform.scale(tilesImage, (
+            self.tilesImage = pygame.transform.smoothscale(tilesImage, (
                 math.floor(tilesImage.get_width() * (tileSize / Config.TILE_SPRITE_SIZE)),
                 math.floor(tilesImage.get_height() * (tileSize / Config.TILE_SPRITE_SIZE))
             ))
         self.tileSize = tileSize
 
-        if vehicleScale == None:
-            self.vehicleScale = tileSize / Config.TILE_SPRITE_SIZE
-        else:
-            self.vehicleScale = vehicleScale
-
-        if tileSize == Config.TILE_SPRITE_SIZE:
-            self.vehiclesImage = vehiclesImage
-        else:
-            self.vehiclesImage = pygame.transform.scale(vehiclesImage, (
-                math.floor(vehiclesImage.get_width() * self.vehicleScale),
-                math.floor(vehiclesImage.get_height() * self.vehicleScale)
-            ))
+        self.vehicleScale = vehicleScale
         self.vehicleImageCache = [ None for i in range(2) ]
+        self.vehiclesImage = vehiclesImage
 
         self.grid = grid
 
@@ -77,7 +67,7 @@ class Vehicle:
         self.map = map
         self.vehicles = vehicles
 
-        self.lap = 1
+        self.lap = 0
         self.checkedCheckpoints = [ False for checkpoint in map.checkpoints ]
 
         self.crashTime = None
@@ -150,21 +140,21 @@ class Vehicle:
 
         # Handle moving
         if self.moving == Vehicle.MOVING_FORWARD:
-            self.acceleration += self.vehicleType['forwardAcceleration']
+            self.acceleration += self.vehicleType['forwardAcceleration'] * delta
         elif self.moving == Vehicle.MOVING_BACKWARD:
-            self.acceleration += self.vehicleType['backwardAcceleration']
+            self.acceleration += self.vehicleType['backwardAcceleration'] * delta
         else:
             # Slow down when not moving
             self.acceleration = 0
             if self.velocity > 0:
-                self.velocity -= self.velocity / 20
+                self.velocity -= self.velocity * delta
             if self.velocity < 0:
-                self.velocity += -self.velocity / 20
+                self.velocity -= self.velocity  * delta
 
         # Cap velocity by vehicle stats
-        self.velocity += self.acceleration
+        self.velocity += self.acceleration * delta
         if self.velocity > self.vehicleType['maxForwardVelocity']:
-                self.velocity = self.vehicleType['maxForwardVelocity']
+            self.velocity = self.vehicleType['maxForwardVelocity']
         if self.velocity < self.vehicleType['maxBackwardVelocity']:
             self.velocity = self.vehicleType['maxBackwardVelocity']
 
@@ -256,18 +246,21 @@ class Vehicle:
                         if self.game.settings['sound-effects']['enabled']:
                             self.game.crashSound.play()
 
-    # Crop the right vehicle image and save in camera vehicle image cache
-    def crop(self, camera):
-        camera.vehicleImageCache[self.id] = pygame.Surface(
-            ( self.vehicleType['width'], self.vehicleType['height'] ),
-            pygame.SRCALPHA
-        )
-        camera.vehicleImageCache[self.id].blit(camera.vehiclesImage, ( 0, 0 ),  (
-            math.floor(self.vehicleType['colors'][self.color]['x'] * camera.vehicleScale),
-            math.floor(self.vehicleType['colors'][self.color]['y'] * camera.vehicleScale),
-            math.floor(self.vehicleType['width'] * camera.vehicleScale),
-            math.floor(self.vehicleType['height'] * camera.vehicleScale)
+    # Crop the good vehicle image, scale it and save it in camera vehicle image cache
+    def cropImage(self, camera):
+        # Crop the good vehicle image
+        cropSurface = camera.vehiclesImage.subsurface((
+            self.vehicleType['colors'][self.color]['x'],
+            self.vehicleType['colors'][self.color]['y'],
+            self.vehicleType['width'], self.vehicleType['height']
         ))
+
+        # Scale it and save in vehicle cache
+        if camera.vehicleScale != 1:
+            camera.vehicleImageCache[self.id] = pygame.transform.smoothscale(cropSurface, (
+                math.floor(self.vehicleType['width'] * camera.vehicleScale), math.floor(self.vehicleType['height'] * camera.vehicleScale) ))
+        else:
+            camera.vehicleImageCache[self.id] = cropSurface
 
     # Draw vehicle
     def draw(self, surface, camera):
@@ -724,7 +717,12 @@ class Map:
                     'x': math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2)),
                     'y': math.floor(y * camera.tileSize - (camera.y - surface.get_height() / 2))
                 }
-                if tile['x'] + camera.tileSize >= 0 and tile['y'] + camera.tileSize >= 0 and tile['x'] < surface.get_width() and tile['y'] < surface.get_height():
+
+                # Draw tile if visible
+                if (
+                    tile['x'] + camera.tileSize >= 0 and tile['y'] + camera.tileSize >= 0 and
+                    tile['x'] < surface.get_width() and tile['y'] < surface.get_height()
+                ):
                     if camera.grid:
                         surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
                             math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
@@ -750,6 +748,8 @@ class Map:
                         'x': math.floor(x * camera.tileSize - (camera.x - surface.get_width() / 2)),
                         'y': math.floor(y *  camera.tileSize - (camera.y - surface.get_height() / 2))
                     }
+
+                    # Draw tile if visible
                     if (
                         tile['x'] + camera.tileSize >= 0 and tile['y'] + camera.tileSize >= 0 and
                         tile['x'] < surface.get_width() and tile['y'] < surface.get_height()

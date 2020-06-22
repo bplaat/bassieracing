@@ -22,9 +22,9 @@ vehicles = [
         ],
         'width': 70,
         'height': 131,
-        'forwardAcceleration': 1,
+        'forwardAcceleration': 200,
         'maxForwardVelocity': 700,
-        'backwardAcceleration': -0.5,
+        'backwardAcceleration': -60,
         'maxBackwardVelocity': -200,
         'turningSpeed': math.radians(90)
     },
@@ -46,9 +46,9 @@ vehicles = [
         ],
         'width': 70,
         'height': 131,
-        'forwardAcceleration': 0.5,
+        'forwardAcceleration': 150,
         'maxForwardVelocity': 800,
-        'backwardAcceleration': -0.25,
+        'backwardAcceleration': -100,
         'maxBackwardVelocity': -300,
         'turningSpeed': math.radians(65)
     },
@@ -70,9 +70,9 @@ vehicles = [
         ],
         'width': 44,
         'height': 100,
-        'forwardAcceleration': 1.5,
+        'forwardAcceleration': 300,
         'maxForwardVelocity': 650,
-        'backwardAcceleration': -1,
+        'backwardAcceleration': -75,
         'maxBackwardVelocity': -200,
         'turningSpeed': math.radians(180)
     },
@@ -94,9 +94,9 @@ vehicles = [
         ],
         'width': 71,
         'height': 116,
-        'forwardAcceleration': 2,
+        'forwardAcceleration': 150,
         'maxForwardVelocity': 400,
-        'backwardAcceleration': -0.75,
+        'backwardAcceleration': -250,
         'maxBackwardVelocity': -1000,
         'turningSpeed': math.radians(80)
     }
