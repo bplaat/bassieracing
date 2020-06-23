@@ -569,13 +569,13 @@ class MapSelector:
 
 # The vehicle selector widget class
 class VehicleSelector:
-    def __init__(self, game, x, y, width, height, color, selectedVehicleIndex, changedCallback = None, callbackExtra = None):
+    def __init__(self, game, x, y, width, height, selectedVehicleIndex, selectedVehicleColor, changedCallback = None, callbackExtra = None):
         self.game = game
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.color = color
+        self.selectedVehicleColor = selectedVehicleColor
         self.changedCallback = changedCallback
         self.callbackExtra = callbackExtra
 
@@ -583,7 +583,7 @@ class VehicleSelector:
         self.widgets = []
 
         ry = y + (height - (128 + 32 + 48 + (32 + 16) * 3)) // 2
-        self.vehicleImage = Image(self.game, None, x, ry, width, 128)
+        self.vehicleImage = Image(self.game, None, x + (width - 128) // 2, ry, 128, 128, self.change_color_button_clicked)
         self.widgets.append(self.vehicleImage)
         ry += 128 + 32
         self.nameLabel = Label(self.game, '', x, ry, width, 48, game.textFont, Color.WHITE)
@@ -616,15 +616,15 @@ class VehicleSelector:
         # Call change callback
         if self.changedCallback != None:
             if self.callbackExtra != None:
-                self.changedCallback(selectedVehicleIndex, self.callbackExtra)
+                self.changedCallback(selectedVehicleIndex, self.selectedVehicleColor, self.callbackExtra)
             else:
-                self.changedCallback(selectedVehicleIndex)
+                self.changedCallback(selectedVehicleIndex, self.selectedVehicleColor)
 
     # Update wigets
     def update_widgets(self):
         vehicleImageSurface = self.game.vehiclesImage.subsurface((
-            self.selectedVehicle['colors'][self.color]['x'],
-            self.selectedVehicle['colors'][self.color]['y'],
+            self.selectedVehicle['colors'][self.selectedVehicleColor]['x'],
+            self.selectedVehicle['colors'][self.selectedVehicleColor]['y'],
             self.selectedVehicle['width'],
             self.selectedVehicle['height']
         ))
@@ -634,6 +634,24 @@ class VehicleSelector:
         self.maxForwardSpeed.set_text('Max Forward Speed: %d km/h' % (self.selectedVehicle['maxForwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
         self.maxBackwardSpeed.set_text('Max Backward Speed: %d km/h' % (self.selectedVehicle['maxBackwardVelocity'] / Config.PIXELS_PER_METER * 3.6))
         self.turningSpeed.set_text('Turing Speed: %d \u00B0/s' % math.degrees(self.selectedVehicle['turningSpeed']))
+
+    # Handle change color button click
+    def change_color_button_clicked(self):
+        # Rotate vehicle color
+        if self.selectedVehicleColor == VehicleColor.BLACK:
+            self.selectedVehicleColor = VehicleColor.BLUE
+        else:
+            self.selectedVehicleColor += 1
+
+        # Update vehicle selector widgets
+        self.update_widgets()
+
+        # Call change callback
+        if self.changedCallback != None:
+            if self.callbackExtra != None:
+                self.changedCallback(self.selectedVehicleIndex, self.selectedVehicleColor, self.callbackExtra)
+            else:
+                self.changedCallback(self.selectedVehicleIndex, self.selectedVehicleColor)
 
     # Handle rotate left button click
     def rotate_left_button_clicked(self):
