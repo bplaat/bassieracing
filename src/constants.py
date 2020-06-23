@@ -5,6 +5,7 @@ class Config:
     # App constants
     NAME = 'BassieRacing'
     VERSION = '0.6.0'
+    GIT_REPO_URL = 'https://github.com/bplaat/bassieracing'
 
     # Window constants
     WIDTH = 1280
@@ -15,9 +16,11 @@ class Config:
     TILE_SPRITE_SIZE = 128
     PIXELS_PER_METER = 18
     DEFAULT_LAPS_COUNT = 3
-    OUTSIDE_TRACK_CRASH_TIMEOUT = 1
+    DEFAULT_CRASH_TIMEOUT = 1
     EXPLOSION_ANIMATION_FRAME_COUNT = 5
     EXPLOSION_ANIMATION_FRAME_TIME = 0.2
+    COUNTDOWN_CLOCK_TICKS = 4
+    COUNTDOWN_CLOCK_TICK_TIME = 0.5
 
     # Editor constants
     EDITOR_CAMERA_BORDER = 12
@@ -29,9 +32,12 @@ class Config:
 class Color:
     BLACK = ( 0, 0, 0 )
     DARK = ( 25, 25, 25 )
+    GREEN = ( 0, 255, 0 )
     LIGHT_GRAY = ( 225, 225, 225 )
-    WHITE = ( 255, 255, 255 )
+    ORANGE = ( 255, 128, 0 )
     TRANSPARENT = ( 0, 0, 0, 0 )
+    WHITE = ( 255, 255, 255 )
+    YELLOW = ( 255, 255, 0 )
 
 # The text align constants class
 class TextAlign:

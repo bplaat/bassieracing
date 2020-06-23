@@ -14,6 +14,7 @@ from pages import *
 import pygame
 import time
 import tkinter
+import urllib.request
 
 # The game class
 class Game:
@@ -56,6 +57,8 @@ class Game:
         self.crashSound = pygame.mixer.Sound('assets/sounds/crash.wav')
         self.introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
         self.lapSound = pygame.mixer.Sound('assets/sounds/lap.wav')
+        self.tickSound = pygame.mixer.Sound('assets/sounds/tick.wav')
+        self.tockSound = pygame.mixer.Sound('assets/sounds/tock.wav')
 
         # Load settings
         if os.path.isfile('settings.json'):
@@ -81,6 +84,9 @@ class Game:
         self.tkinter_window = tkinter.Tk()
         self.tkinter_window.withdraw()
 
+        # Detect new version
+        self.detect_new_version()
+
         # Create intro or menu page
         if self.settings['intro']['enabled']:
             self.page = IntroPage(self)
@@ -92,6 +98,28 @@ class Game:
         self.settings['music']['position'] = round(self.musicStart + pygame.mixer.music.get_pos() / 1000, 3)
         with open('settings.json', 'w') as file:
             file.write(json.dumps(self.settings, separators=(',', ':')) + '\n')
+
+    # Detect new version
+    def detect_new_version(self):
+        try:
+            # Do HTTP request to online constants.py file to check version label
+            response = urllib.request.urlopen(Config.GIT_REPO_URL + '/blob/master/src/constants.py?raw=true')
+            data = response.read().decode('utf8')
+
+            # Parse version label
+            start = 'VERSION = \''
+            version = data[data.find(start) + len(start):]
+            version = version[:version.find('\'')]
+
+            # Do final version logic
+            if version != Config.VERSION:
+                self.newVersionAvailable = version
+            else:
+                self.newVersionAvailable = None
+
+        # When it fails because of no internet it isn't so bad
+        except:
+            self.newVersionAvailable = None
 
     # Handle user events
     def handle_event(self, event):

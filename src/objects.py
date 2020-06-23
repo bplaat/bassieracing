@@ -70,6 +70,7 @@ class Vehicle:
         self.lap = 0
         self.checkedCheckpoints = [ False for checkpoint in map.checkpoints ]
 
+        self.started = False
         self.crashTime = None
         self.lastCheckpoint = self.map.finish
         self.crashed = False
@@ -91,7 +92,7 @@ class Vehicle:
             self.crashTime = self.game.time
 
         # When crash timeout is hit
-        if self.game.time - self.crashTime > Config.OUTSIDE_TRACK_CRASH_TIMEOUT:
+        if self.game.time - self.crashTime > self.map.crashes['timeout']:
             # Crash the vehicle
             self.crashed = True
             self.crashTime = self.game.time
@@ -102,6 +103,10 @@ class Vehicle:
 
     # Update vehicle
     def update(self, delta, camera):
+        # When not started do nothing
+        if not self.started:
+            return
+
         # When crashed
         if self.crashed:
             # Check crash animation timeout
@@ -181,7 +186,7 @@ class Vehicle:
         # Check if the car is inside the map
         if tile['x'] >= 0 and tile['y'] >= 0 and tile['x'] < self.map.width and tile['y'] < self.map.height:
             # Check crash when no on a track tile
-            if self.map.track[tile['y']][tile['x']] == 0 and self.map.enableCrashes:
+            if self.map.track[tile['y']][tile['x']] == 0 and self.map.crashes['enabled']:
                 self.check_crash()
             else:
                 self.crashTime = None
@@ -224,11 +229,11 @@ class Vehicle:
                         break
 
         # If out side map also check crash
-        elif self.map.enableCrashes:
+        elif self.map.crashes['enabled']:
             self.check_crash()
 
         # Check if vehicles are to close to crash
-        if self.map.enableCrashes:
+        if self.map.crashes['enabled']:
             for vehicle in self.vehicles:
                 if vehicle != self:
                     # Calculate distence between two vehicles
@@ -302,7 +307,10 @@ class Map:
     # Generate random map
     def generate(self):
         self.laps = Config.DEFAULT_LAPS_COUNT
-        self.enableCrashes = True
+        self.crashes = {
+            'enabled': True,
+            'timeout': Config.DEFAULT_CRASH_TIMEOUT
+        }
 
         self.noise = {
             'perlin': PerlinNoise(),
@@ -339,7 +347,10 @@ class Map:
         map = Map(data['name'], data['width'], data['height'])
 
         map.laps = data['laps']
-        map.enableCrashes = data['enableCrashes']
+        map.crashes = {
+            'enabled': data['crashes']['enabled'],
+            'timeout': data['crashes']['timeout']
+        }
 
         map.noise = {
             'perlin': PerlinNoise(),
@@ -372,7 +383,10 @@ class Map:
                 'height': self.height,
 
                 'laps': self.laps,
-                'enableCrashes': self.enableCrashes,
+                'crashes': {
+                    'enabled': self.crashes['enabled'],
+                    'timeout': self.crashes['timeout']
+                },
 
                 'noise': {
                     'x': self.noise['x'],
@@ -495,14 +509,14 @@ class Map:
                 if self.track[y][x] == 2:
                     width = 0
                     for i in range(self.width):
-                        if x + i != self.width - 1 and self.track[y][x + i] == 2:
+                        if x + i != self.width and self.track[y][x + i] == 2:
                             width += 1
                         else:
                             break
 
                     height = 0
                     for i in range(self.height):
-                        if y + i != self.height - 1 and self.track[y + i][x] == 2:
+                        if y + i != self.height and self.track[y + i][x] == 2:
                             height += 1
                         else:
                             break
@@ -550,14 +564,14 @@ class Map:
                     if not alreadyExists:
                         width = 0
                         for i in range(self.width):
-                            if x + i != self.width - 1 and self.track[y][x + i] == 3:
+                            if x + i != self.width and self.track[y][x + i] == 3:
                                 width += 1
                             else:
                                 break
 
                         height = 0
                         for i in range(self.height):
-                            if y + i != self.height - 1 and self.track[y + i][x] == 3:
+                            if y + i != self.height and self.track[y + i][x] == 3:
                                 height += 1
                             else:
                                 break
@@ -724,14 +738,14 @@ class Map:
                     tile['x'] < surface.get_width() and tile['y'] < surface.get_height()
                 ):
                     if camera.grid:
-                        surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
+                        surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1 ), (
                             math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                             math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                             camera.tileSize - 1,
                             camera.tileSize - 1
                         ))
                     else:
-                        surface.blit(camera.tilesImage, ( tile['x'], tile['y'], camera.tileSize, camera.tileSize ), (
+                        surface.blit(camera.tilesImage, ( tile['x'], tile['y'] ), (
                             math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                             math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                             camera.tileSize,
@@ -755,14 +769,14 @@ class Map:
                         tile['x'] < surface.get_width() and tile['y'] < surface.get_height()
                     ):
                         if camera.grid:
-                            surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1, camera.tileSize - 1, camera.tileSize - 1 ), (
+                            surface.blit(camera.tilesImage, ( tile['x'] + 1, tile['y'] + 1 ), (
                                 math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                                 math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)) + 1,
                                 camera.tileSize - 1,
                                 camera.tileSize - 1
                             ))
                         else:
-                            surface.blit(camera.tilesImage, ( tile['x'], tile['y'], camera.tileSize, camera.tileSize ), (
+                            surface.blit(camera.tilesImage, ( tile['x'], tile['y'] ), (
                                 math.floor(tileType['x'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                                 math.floor(tileType['y'] * (camera.tileSize / Config.TILE_SPRITE_SIZE)),
                                 camera.tileSize,

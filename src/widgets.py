@@ -326,8 +326,70 @@ class MiniMap:
             # Draw surface
             surface.blit(self.surface, ( self.x, self.y ))
 
+# The countdown clock widget
+class CountdownClock:
+    # Create the countdown clock widget
+    def __init__(self, game, x, y, width, height):
+        self.game = game
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+        self.tickPadding = 8
+        self.tickSize = width // Config.COUNTDOWN_CLOCK_TICKS - self.tickPadding * 2
+
+        self.ended = False
+        self.tick = 0
+        self.tickTime = self.game.time
+
+    # Update the countdown clock widget
+    def update(self, delta):
+        # Only draw the clock when not ended
+        if not self.ended:
+            # When the tick time passed
+            if self.game.time - self.tickTime > Config.COUNTDOWN_CLOCK_TICK_TIME:
+                # Stop the clock
+                if self.tick == Config.COUNTDOWN_CLOCK_TICKS:
+                    self.ended = True
+                    return
+
+                # Go to the next tick
+                self.tick += 1
+                self.tickTime = self.game.time
+
+                # When the final tick has been reached stop and play sound
+                if self.tick == Config.COUNTDOWN_CLOCK_TICKS:
+                    if self.game.settings['sound-effects']['enabled']:
+                        self.game.tockSound.play()
+                else:
+                    if self.game.settings['sound-effects']['enabled']:
+                        self.game.tickSound.play()
+
+    # Draw the countdown clock widget
+    def draw(self, surface):
+        # Only draw the clock when not ended
+        if not self.ended:
+            # Draw dark frame
+            pygame.draw.rect(surface, Color.DARK, ( self.x, self.y, self.width, self.height))
+
+            # Draw the ticks
+            for i in range(Config.COUNTDOWN_CLOCK_TICKS):
+                if self.tick == Config.COUNTDOWN_CLOCK_TICKS:
+                    tickColor = Color.GREEN
+                elif (i + 1) <= self.tick:
+                    tickColor = Color.ORANGE
+                else:
+                    tickColor = Color.YELLOW
+
+                pygame.draw.circle(surface, tickColor, (
+                    self.x + self.tickPadding + i * (self.tickSize + self.tickPadding * 2) + self.tickSize // 2,
+                    self.y + self.tickPadding + self.tickSize // 2
+                ), self.tickSize // 2)
+
 # The map selector widget
 class MapSelector:
+    # Create map selector widget
     def __init__(self, game, x, y, width, height, selectedMapIndex, customMapPaths, changedCallback = None, callbackExtra = None):
         self.game = game
         self.x = x
@@ -571,11 +633,18 @@ class VehicleViewport:
 
         # Create vehicle viewport widgets
         self.widgets = []
-        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (vehicle.lap + 1, map.laps), 24, height - 24 - 24 - 24 - 16, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
+        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (map.laps if vehicle.lap + 1 > map.laps else vehicle.lap + 1, self.map.laps), 24, height - 24 - 24 - 24 - 16, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.lapLabel)
         self.speedLabel = Label(self.game, 'Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
 
+        # Check if the car is already started
+        if not self.vehicle.started:
+            tickSize = self.width // 8
+            self.countdownClock = CountdownClock(self.game, (width - Config.COUNTDOWN_CLOCK_TICKS * tickSize) // 2, ((height - 256) - tickSize) // 2, Config.COUNTDOWN_CLOCK_TICKS * tickSize, tickSize)
+            self.widgets.append(self.countdownClock)
+
+    # Handle vehicle viewport events
     def handle_event(self, event):
         # Handle keydown events
         if event.type == pygame.KEYDOWN:
@@ -619,6 +688,13 @@ class VehicleViewport:
 
         return False
 
+    # Update the vehicle viewport
+    def update(self, delta):
+        # Update countdown clock if vehicle is not started
+        if not self.vehicle.started:
+            self.countdownClock.update(delta)
+
+    # Draw the vehicle viewport
     def draw(self, surface):
         # Clear the surface
         self.surface.fill(Color.DARK)
@@ -635,7 +711,7 @@ class VehicleViewport:
             vehicle.draw(self.surface, self.camera)
 
         # Update lap label
-        self.lapLabel.set_text('Lap: %d/%d' % (self.vehicle.lap + 1, self.map.laps))
+        self.lapLabel.set_text('Lap: %d/%d' % (self.map.laps if self.vehicle.lap + 1 > self.map.laps else self.vehicle.lap + 1, self.map.laps))
 
         # Update speed label
         self.speedLabel.set_text('Speed: %d km/h' % (self.vehicle.velocity / Config.PIXELS_PER_METER * 3.6))

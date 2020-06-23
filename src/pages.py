@@ -123,12 +123,18 @@ class MenuPage(Page):
         y += 64 + 16
         self.widgets.append(Button(self.game, 'Exit', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.exit_button_clicked))
 
+        if self.game.newVersionAvailable != None:
+            self.widgets.append(Label(self.game, 'A newer version (v' + self.game.newVersionAvailable + ') is available', 16, 16, self.game.width - 16 - 256 - 16, 32, self.game.textFont, Color.WHITE, TextAlign.LEFT, self.new_version_label_clicked))
         self.widgets.append(Label(self.game, 'v' + Config.VERSION, self.game.width - 16 - 256, 16, 256, 32, self.game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
         self.widgets.append(Label(self.game, 'Made by Bastiaan van der Plaat', 0, self.game.height - 64 - 16, self.game.width, 64, self.game.textFont, Color.WHITE, TextAlign.CENTER, self.footer_label_clicked))
 
+    # New version label clicked
+    def new_version_label_clicked(self):
+        webbrowser.open_new(Config.GIT_REPO_URL + '/releases')
+
     # Version label clicked
     def version_label_clicked(self):
-        webbrowser.open_new('https://github.com/bplaat/bassieracing')
+        webbrowser.open_new(Config.GIT_REPO_URL)
 
     # Play button clicked
     def play_button_clicked(self):
@@ -289,6 +295,17 @@ class GamePage(Page):
 
     # Update game page
     def update(self, delta):
+        # Update vehicle viewports
+        self.leftVehicleViewport.update(delta)
+        self.rightVehicleViewport.update(delta)
+
+        # When countdown is over start cars
+        if not self.leftVehicle.started and self.leftVehicleViewport.countdownClock.ended:
+            self.leftVehicle.started = True
+
+        if not self.rightVehicle.started and self.rightVehicleViewport.countdownClock.ended:
+            self.rightVehicle.started = True
+
         # Update all the vehicles
         for vehicle in self.vehicles:
             if vehicle.id == 0:
