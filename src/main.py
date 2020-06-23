@@ -49,7 +49,7 @@ class Game:
         self.explosionImage = pygame.image.load('assets/images/explosion.png').convert_alpha()
 
         # Load music
-        pygame.mixer.music.load('assets/music/deadmau5 - Infra Turbo Pigcart Racer.ogg')
+        pygame.mixer.music.load('assets/music/deadmau5 - Infra Turbo Pigcart Racer.mp3')
         pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
 
