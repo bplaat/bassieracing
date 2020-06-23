@@ -172,7 +172,7 @@ class PlayPage(Page):
     # Create play page widgets
     def create_widgets(self):
         y = (self.game.height - (96 + (64 + 16) * 3 + 24 + 64)) // 2
-        self.widgets.append(Label(self.game, 'Select your game mode', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'Select a game mode', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
         self.widgets.append(Button(self.game, 'Single Player', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.single_player_button_clicked))
         y += 64 + 16
@@ -247,12 +247,12 @@ class SelectVehiclePage(Page):
     # Create select vehicle page widgets
     def create_widgets(self):
         if self.gamemode == GameMode.SINGLE_PLAYER:
-            self.widgets.append(Label(self.game, 'Select your vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
+            self.widgets.append(Label(self.game, 'Select a vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
             self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), VehicleColor.BLUE, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
             self.widgets.append(self.leftVehicleSelector)
 
         if self.gamemode == GameMode.SPLIT_SCREEN:
-            self.widgets.append(Label(self.game, 'Select both your vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
+            self.widgets.append(Label(self.game, 'Select both a vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
             self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), VehicleColor.BLUE, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
             self.widgets.append(self.leftVehicleSelector)
             self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), VehicleColor.RED, self.rightSelectedVehicleIndex, self.right_vehicle_selector_changed)
@@ -383,16 +383,43 @@ class GamePage(Page):
 
         # When both vehicles are finished go to the stats page
         if self.gamemode == GameMode.SINGLE_PLAYER and self.leftVehicle.finished:
-            self.game.page = StatsPage(self.game, self.gamemode, [ self.leftVehicle ])
+            self.game.page = StatsPage(self.game, self.gamemode, self.map, self.vehicles)
         if self.gamemode == GameMode.SPLIT_SCREEN and self.leftVehicle.finished and self.rightVehicle.finished:
-            self.game.page = StatsPage(self.game, self.gamemode, [ self.leftVehicle, self.rightVehicle ])
+            self.game.page = StatsPage(self.game, self.gamemode, self.map, self.vehicles)
 
 # The stats page class
 class StatsPage(Page):
     # Create stats page
-    def __init__(self, game, gamemode, vehicles):
+    def __init__(self, game, gamemode, map, vehicles):
         self.gamemode = gamemode
+        self.map = map
         self.vehicles = vehicles
+
+        # Calculate fastest time
+        if gamemode == GameMode.SINGLE_PLAYER:
+            fastestTime = self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime
+        if game == GameMode.SPLIT_SCREEN:
+            fastestTime = min(
+                self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime,
+                self.vehicles[VehicleId.RIGHT].finishTime - self.vehicles[VehicleId.RIGHT].startTime
+            )
+
+        # Save high score
+        highscoreExisted = False
+        for score in game.settings['high-scores']:
+            if score['map-id'] == map.id and score['time'] > fastestTime:
+                score['time'] = round(fastestTime, 3)
+                highscoreExisted = True
+                break
+
+        if not highscoreExisted:
+            game.settings['high-scores'].append({
+                'map-id': map.id,
+                'time': round(fastestTime, 3)
+            })
+
+        game.save_settings()
+
         Page.__init__(self, game)
 
     # Create stats page widgets
@@ -655,7 +682,7 @@ class SettingsPage(Page):
 
     # Create settings page widgets
     def create_widgets(self):
-        y = (self.game.height - (72 + (64 + 16) * 4 + 24 + 64)) // 2
+        y = (self.game.height - (72 + (64 + 16) * 5 + 8 + 24 + 64)) // 2
         self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
         y += 72 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Intro disabled', 'Intro enabled' ], self.game.settings['intro']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.intro_toggle_button_changed))
@@ -664,6 +691,8 @@ class SettingsPage(Page):
         y += 64 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Sound effects disabled', 'Sound effects enabled' ], self.game.settings['sound-effects']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.sound_effects_toggle_button_changed))
         y += 64 + 24
+        self.widgets.append(Button(self.game, 'Resest high scores', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.reset_high_scores_button_clicked))
+        y += 64 + 16
         self.widgets.append(Button(self.game, 'Clear custom maps cache', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.clear_custom_maps_cache_button_clicked))
         y += 64 + 24
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
@@ -689,6 +718,11 @@ class SettingsPage(Page):
     # Sound effects toggle button changed
     def sound_effects_toggle_button_changed(self, active):
         self.game.settings['sound-effects']['enabled'] = active
+        self.game.save_settings()
+
+    # Reset high scores button clicked
+    def reset_high_scores_button_clicked(self):
+        self.game.settings['high-scores'] = []
         self.game.save_settings()
 
     # Clear custom maps cache button clicked

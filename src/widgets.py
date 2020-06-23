@@ -465,8 +465,21 @@ class MapSelector:
             self.widgets.append(MiniMap(self.game, map, None, rx + (column_width - minmap_size) / 2, ry, minmap_size, minmap_size))
             ry += minmap_size + 32
             self.widgets.append(Label(self.game, map.name, rx, ry, column_width, 32, self.game.textFont, color))
-            ry += 32 + 24
+
+            ry += 32 + 16
             self.widgets.append(Label(self.game, 'Size: %dx%d' % (map.width, map.height), rx, ry, column_width, 24, self.game.smallFont, color))
+
+            # Try to find high score for map
+            highscore = None
+            for score in self.game.settings['high-scores']:
+                if score['map-id'] == map.id:
+                    highscore = score['time']
+                    break
+
+            if highscore != None:
+                ry += 24 + 8
+                self.widgets.append(Label(self.game, 'Fastest: ' + formatTime(highscore), rx, ry, column_width, 24, self.game.smallFont, color))
+
             rx += column_width
 
         self.widgets.append(Button(self.game, '<', self.x, self.y, 48, self.height, self.game.titleFont, Color.BLACK, Color.WHITE, self.rotate_left_button_clicked))

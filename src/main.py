@@ -78,6 +78,7 @@ class Game:
                 'sound-effects': {
                     'enabled': True
                 },
+                'high-scores': [],
                 'custom-maps': []
             }
         self.musicStart = self.settings['music']['position']
