@@ -111,9 +111,9 @@ class MenuPage(Page):
 
     # Create menu page widgets
     def create_widgets(self):
-        y = ((self.game.height - 32) - (96 + (64 + 16) * 5)) // 2
-        self.widgets.append(Label(self.game, 'BassieRacing', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        y += 96 + 16
+        y = ((self.game.height - 32) - (72 + (64 + 16) * 5)) // 2
+        self.widgets.append(Label(self.game, 'BassieRacing', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 16
         self.widgets.append(Button(self.game, 'Play', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.play_button_clicked))
         y += 64 + 16
         self.widgets.append(Button(self.game, 'Map Editor', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.edit_button_clicked))
@@ -127,6 +127,7 @@ class MenuPage(Page):
         if self.game.newVersionAvailable != None:
             self.widgets.append(Label(self.game, 'A newer version (v' + self.game.newVersionAvailable + ') is available', 16, 16, self.game.width - 16 - 256 - 16, 32, self.game.textFont, Color.WHITE, TextAlign.LEFT, self.new_version_label_clicked))
         self.widgets.append(Label(self.game, 'v' + Config.VERSION, self.game.width - 16 - 256, 16, 256, 32, self.game.textFont, Color.WHITE, TextAlign.RIGHT, self.version_label_clicked))
+
         self.widgets.append(Label(self.game, 'Made by Bastiaan van der Plaat', 0, self.game.height - 64 - 16, self.game.width, 64, self.game.textFont, Color.WHITE, TextAlign.CENTER, self.footer_label_clicked))
 
     # New version label clicked
@@ -139,7 +140,7 @@ class MenuPage(Page):
 
     # Play button clicked
     def play_button_clicked(self):
-        self.game.page = SelectMapPage(self.game)
+        self.game.page = PlayPage(self.game)
 
     # Edit button clicked
     def edit_button_clicked(self):
@@ -162,17 +163,53 @@ class MenuPage(Page):
     def footer_label_clicked(self):
         webbrowser.open_new('https://bastiaan.ml/')
 
+# The play page class
+class PlayPage(Page):
+    # Create play page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+    # Create play page widgets
+    def create_widgets(self):
+        y = (self.game.height - (96 + (64 + 16) * 3 + 24 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Select your game mode', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
+        y += 96 + 16
+        self.widgets.append(Button(self.game, 'Single Player', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.single_player_button_clicked))
+        y += 64 + 16
+        self.widgets.append(Button(self.game, 'Split Screen', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.split_screen_button_clicked))
+        y += 64 + 16
+        self.widgets.append(Button(self.game, 'Multi Player', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.multi_player_button_clicked))
+        y += 64 + 24
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Single Player button clicked
+    def single_player_button_clicked(self):
+        self.game.page = SelectMapPage(self.game, GameMode.SINGLE_PLAYER)
+
+    # Split Screen button clicked
+    def split_screen_button_clicked(self):
+        self.game.page = SelectMapPage(self.game, GameMode.SPLIT_SCREEN)
+
+    # Multi Player button clicked
+    def multi_player_button_clicked(self):
+        self.game.page = MultiPlayerPage(self.game)
+
+    # Back button clicked event
+    def back_button_clicked(self):
+        self.game.page = MenuPage(self.game)
+
 # The select map page class
 class SelectMapPage(Page):
     # Create select map page
-    def __init__(self, game):
+    def __init__(self, game, gamemode):
+        self.gamemode = gamemode
         self.selectedMapIndex = None
         Page.__init__(self, game)
 
     # Create select map page widgets
     def create_widgets(self):
-        self.widgets.append(Label(self.game, 'Select a map to race', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        self.mapSelector = MapSelector(self.game, 16, 24 + 96 + 16, self.game.width - 16 - 16, self.game.height - (24 + 96 + 16) - (48 + 64 + 16), self.selectedMapIndex, self.map_selector_changed)
+        self.widgets.append(Label(self.game, 'Select a map to race', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        self.mapSelector = MapSelector(self.game, 16, 24 + 72 + 16, self.game.width - 16 - 16, self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.selectedMapIndex, self.map_selector_changed)
         self.widgets.append(self.mapSelector)
         self.widgets.append(Button(self.game, 'Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button(self.game, 'Load custom map', (self.game.width - 420) // 2, self.game.height - 64 - 16, 420, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
@@ -184,7 +221,7 @@ class SelectMapPage(Page):
 
     # Back button clicked
     def back_button_clicked(self):
-        self.game.page = MenuPage(self.game)
+        self.game.page = PlayPage(self.game)
 
     # Load button clicked
     def load_button_clicked(self):
@@ -195,12 +232,13 @@ class SelectMapPage(Page):
 
     # Continue button clicked
     def continue_button_clicked(self):
-        self.game.page = SelectVehiclePage(self.game, self.mapSelector.selectedMap)
+        self.game.page = SelectVehiclePage(self.game, self.gamemode, self.mapSelector.selectedMap)
 
 # The select vehicle page class
 class SelectVehiclePage(Page):
     # Create select vehicle page
-    def __init__(self, game, map):
+    def __init__(self, game, gamemode, map):
+        self.gamemode = gamemode
         self.map = map
         self.leftSelectedVehicleIndex = None
         self.rightSelectedVehicleIndex = None
@@ -208,11 +246,18 @@ class SelectVehiclePage(Page):
 
     # Create select vehicle page widgets
     def create_widgets(self):
-        self.widgets.append(Label(self.game, 'Select both your vehicle', 0, 24, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), VehicleColor.BLUE, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
-        self.widgets.append(self.leftVehicleSelector)
-        self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 96 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 96 + 16) - (48 + 64 + 16), VehicleColor.RED, self.rightSelectedVehicleIndex, self.right_vehicle_selector_changed)
-        self.widgets.append(self.rightVehicleSelector)
+        if self.gamemode == GameMode.SINGLE_PLAYER:
+            self.widgets.append(Label(self.game, 'Select your vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
+            self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), VehicleColor.BLUE, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
+            self.widgets.append(self.leftVehicleSelector)
+
+        if self.gamemode == GameMode.SPLIT_SCREEN:
+            self.widgets.append(Label(self.game, 'Select both your vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
+            self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), VehicleColor.BLUE, self.leftSelectedVehicleIndex, self.left_vehicle_selector_changed)
+            self.widgets.append(self.leftVehicleSelector)
+            self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), VehicleColor.RED, self.rightSelectedVehicleIndex, self.right_vehicle_selector_changed)
+            self.widgets.append(self.rightVehicleSelector)
+
         self.widgets.append(Button(self.game, 'Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button(self.game, 'Race!', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
 
@@ -226,17 +271,25 @@ class SelectVehiclePage(Page):
 
     # Back button clicked
     def back_button_clicked(self):
-        self.game.page = SelectMapPage(self.game)
+        self.game.page = SelectMapPage(self.game, self.gamemode)
 
     # Race button clicked
     def race_button_clicked(self):
-        self.game.page = GamePage(self.game, self.map, self.leftVehicleSelector.selectedVehicle, self.rightVehicleSelector.selectedVehicle)
+        if self.gamemode == GameMode.SINGLE_PLAYER:
+            self.game.page = GamePage(self.game, self.gamemode, self.map, [
+                self.leftVehicleSelector.selectedVehicle
+            ])
+        if self.gamemode == GameMode.SPLIT_SCREEN:
+            self.game.page = GamePage(self.game, self.gamemode, self.map, [
+                self.leftVehicleSelector.selectedVehicle,
+                self.rightVehicleSelector.selectedVehicle
+            ])
 
 # The game page class
 class GamePage(Page):
     # Create game page
-    def __init__(self, game, map, leftVehicleType, rightVehicleType):
-        # Set map
+    def __init__(self, game, gamemode, map, vehicleTypes):
+        self.gamemode = gamemode
         self.map = map
 
         # Create the vehicles
@@ -244,48 +297,61 @@ class GamePage(Page):
 
         # Check if finish is horizontal
         if map.finish['height'] > map.finish['width']:
-            self.leftVehicle = Vehicle(game, VehicleId.LEFT, leftVehicleType, VehicleColor.BLUE, map, self.vehicles,
+            self.leftVehicle = Vehicle(game, VehicleId.LEFT, vehicleTypes[0], VehicleColor.BLUE, map, self.vehicles,
                 (map.finish['x'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
                 (map.finish['y'] + map.finish['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
                 math.radians(270)
             )
             self.vehicles.append(self.leftVehicle)
 
-            self.rightVehicle = Vehicle(game, VehicleId.RIGHT, rightVehicleType, VehicleColor.RED, map, self.vehicles,
-                (map.finish['x'] - 1)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-                (map.finish['y'] + map.finish['height'] // 2)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-                math.radians(270)
-            )
-            self.vehicles.append(self.rightVehicle)
+            if gamemode == GameMode.SPLIT_SCREEN:
+                self.rightVehicle = Vehicle(game, VehicleId.RIGHT, vehicleTypes[1], VehicleColor.RED, map, self.vehicles,
+                    (map.finish['x'] - 1)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                    (map.finish['y'] + map.finish['height'] // 2)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                    math.radians(270)
+                )
+                self.vehicles.append(self.rightVehicle)
 
         # Or when the finish is vertical
         else:
-            self.leftVehicle = Vehicle(game, VehicleId.LEFT, leftVehicleType, VehicleColor.BLUE, map, self.vehicles,
+            self.leftVehicle = Vehicle(game, VehicleId.LEFT, vehicleTypes[0], VehicleColor.BLUE, map, self.vehicles,
                 (map.finish['x'] + map.finish['width'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
                 (map.finish['y'] + map.finish['height']) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
                 0
             )
             self.vehicles.append(self.leftVehicle)
 
-            self.rightVehicle = Vehicle(game, VehicleId.RIGHT, rightVehicleType, VehicleColor.RED, map, self.vehicles,
-                (map.finish['x'] + map.finish['width'] // 2)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-                (map.finish['y'] + map.finish['height'])  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
-                0
-            )
-            self.vehicles.append(self.rightVehicle)
+            if gamemode == GameMode.SPLIT_SCREEN:
+                self.rightVehicle = Vehicle(game, VehicleId.RIGHT, vehicleTypes[1], VehicleColor.RED, map, self.vehicles,
+                    (map.finish['x'] + map.finish['width'] // 2)  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                    (map.finish['y'] + map.finish['height'])  * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2,
+                    0
+                )
+                self.vehicles.append(self.rightVehicle)
 
         # Create page
         Page.__init__(self, game, Color.BLACK)
 
     # Create game page widgets
     def create_widgets(self):
-        self.leftVehicleViewport = VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
-        self.widgets.append(self.leftVehicleViewport)
-        self.rightVehicleViewport = VehicleViewport(self.game, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
-        self.widgets.append(self.rightVehicleViewport)
         minimap_size = self.game.width / 5
-        self.widgets.append(Rect(self.game, (self.game.width - minimap_size) // 2 - 2, 8, minimap_size + 4, minimap_size + 4, Color.BLACK))
-        self.widgets.append(MiniMap(self.game, self.map, self.vehicles, (self.game.width - minimap_size) // 2, 10, minimap_size, minimap_size))
+
+        if self.gamemode == GameMode.SINGLE_PLAYER:
+            self.leftVehicleViewport = VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width, self.game.height, self.map, self.vehicles)
+            self.widgets.append(self.leftVehicleViewport)
+
+            self.widgets.append(Rect(self.game, self.game.width - minimap_size - 12, self.game.height - minimap_size - 12, minimap_size + 4, minimap_size + 4, Color.BLACK))
+            self.widgets.append(MiniMap(self.game, self.map, self.vehicles, self.game.width - minimap_size - 10, self.game.height - minimap_size - 10, minimap_size, minimap_size))
+
+        if self.gamemode == GameMode.SPLIT_SCREEN:
+            self.leftVehicleViewport = VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
+            self.widgets.append(self.leftVehicleViewport)
+            self.rightVehicleViewport = VehicleViewport(self.game, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
+            self.widgets.append(self.rightVehicleViewport)
+
+            self.widgets.append(Rect(self.game, (self.game.width - minimap_size) // 2 - 2, 8, minimap_size + 4, minimap_size + 4, Color.BLACK))
+            self.widgets.append(MiniMap(self.game, self.map, self.vehicles, (self.game.width - minimap_size) // 2, 10, minimap_size, minimap_size))
+
         self.widgets.append(Button(self.game, 'Back', self.game.width - 16 - 128, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
     # Back button clicked
@@ -296,14 +362,15 @@ class GamePage(Page):
     def update(self, delta):
         # Update vehicle viewports
         self.leftVehicleViewport.update(delta)
-        self.rightVehicleViewport.update(delta)
+        if self.gamemode == GameMode.SPLIT_SCREEN:
+            self.rightVehicleViewport.update(delta)
 
         # When countdown is over start vehicle
         if not self.leftVehicle.started and self.leftVehicleViewport.countdownClock.ended:
             self.leftVehicle.started = True
             self.leftVehicle.startTime = self.game.time
 
-        if not self.rightVehicle.started and self.rightVehicleViewport.countdownClock.ended:
+        if self.gamemode == GameMode.SPLIT_SCREEN and not self.rightVehicle.started and self.rightVehicleViewport.countdownClock.ended:
             self.rightVehicle.started = True
             self.rightVehicle.startTime = self.game.time
 
@@ -315,63 +382,109 @@ class GamePage(Page):
                 vehicle.update(delta, self.rightVehicleViewport.camera)
 
         # When both vehicles are finished go to the stats page
-        if self.leftVehicle.finished and self.rightVehicle.finished:
-            self.game.page = StatsPage(self.game, self.leftVehicle, self.rightVehicle)
+        if self.gamemode == GameMode.SINGLE_PLAYER and self.leftVehicle.finished:
+            self.game.page = StatsPage(self.game, self.gamemode, [ self.leftVehicle ])
+        if self.gamemode == GameMode.SPLIT_SCREEN and self.leftVehicle.finished and self.rightVehicle.finished:
+            self.game.page = StatsPage(self.game, self.gamemode, [ self.leftVehicle, self.rightVehicle ])
 
 # The stats page class
 class StatsPage(Page):
     # Create stats page
-    def __init__(self, game, leftVehicle, rightVehicle):
-        self.leftVehicle = leftVehicle
-        self.rightVehicle = rightVehicle
+    def __init__(self, game, gamemode, vehicles):
+        self.gamemode = gamemode
+        self.vehicles = vehicles
         Page.__init__(self, game)
 
     # Create stats page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + 16 + 128 + 16 + (48 + 16) * (2 + len(self.leftVehicle.lapTimes)) + 16 + 64)) // 2
-        self.widgets.append(Label(self.game, 'Game stats', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        y += 96 + 16
+        y = (self.game.height - (72 + 16 + 128 + 16 + (48 + 16) * (2 + len(self.vehicles[VehicleId.LEFT].lapTimes)) + 16 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Game stats', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 16
 
-        if self.leftVehicle.finishTime - self.leftVehicle.startTime < self.rightVehicle.finishTime - self.rightVehicle.startTime:
+        # Create stats for the single player gamemode
+        if self.gamemode == GameMode.SINGLE_PLAYER:
             # Create vehicle image
             vehicleImageSurface = self.game.vehiclesImage.subsurface((
-                self.leftVehicle.vehicleType['colors'][self.leftVehicle.color]['x'],
-                self.leftVehicle.vehicleType['colors'][self.leftVehicle.color]['y'],
-                self.leftVehicle.vehicleType['width'],
-                self.leftVehicle.vehicleType['height']
+                self.vehicles[VehicleId.LEFT].vehicleType['colors'][self.vehicles[VehicleId.LEFT].color]['x'],
+                self.vehicles[VehicleId.LEFT].vehicleType['colors'][self.vehicles[VehicleId.LEFT].color]['y'],
+                self.vehicles[VehicleId.LEFT].vehicleType['width'],
+                self.vehicles[VehicleId.LEFT].vehicleType['height']
             ))
             self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
             y += 128 + 16
 
-            self.widgets.append(Label(self.game, 'Left player wins!', self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+            self.widgets.append(Label(self.game, 'You won!', self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
             y += 48 + 16
-        else:
-            # Create vehicle image
-            vehicleImageSurface = self.game.vehiclesImage.subsurface((
-                self.rightVehicle.vehicleType['colors'][self.rightVehicle.color]['x'],
-                self.rightVehicle.vehicleType['colors'][self.rightVehicle.color]['y'],
-                self.rightVehicle.vehicleType['width'],
-                self.rightVehicle.vehicleType['height']
-            ))
-            self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
-            y += 128 + 16
 
-            self.widgets.append(Label(self.game, 'Right player wins!', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.WHITE))
-            y += 64 + 16
-
-        self.widgets.append(Label(self.game, 'Total: %s  -  %s' % (formatTime(self.leftVehicle.finishTime - self.leftVehicle.startTime), formatTime(self.rightVehicle.finishTime - self.rightVehicle.startTime)), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
-        y += 48 + 16
-
-        for i, time in enumerate(self.leftVehicle.lapTimes):
-            self.widgets.append(Label(self.game, 'Lap %d: %s  -  %s' % (i + 1, formatTime(time), formatTime(self.rightVehicle.lapTimes[i])), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+            self.widgets.append(Label(self.game, 'Total: %s' % (formatTime(self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime)), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
             y += 48 + 16
-        y += 16
+
+            for i, time in enumerate(self.vehicles[VehicleId.LEFT].lapTimes):
+                self.widgets.append(Label(self.game, 'Lap %d: %s' % (i + 1, formatTime(time)), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+                y += 48 + 16
+            y += 16
+
+        # Create stats for the split screen gamemode
+        if self.gamemode == GameMode.SPLIT_SCREEN:
+            if self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime < self.vehicles[VehicleId.RIGHT].finishTime - self.vehicles[VehicleId.RIGHT].startTime:
+                # Create vehicle image
+                vehicleImageSurface = self.game.vehiclesImage.subsurface((
+                    self.vehicles[VehicleId.LEFT].vehicleType['colors'][self.vehicles[VehicleId.LEFT].color]['x'],
+                    self.vehicles[VehicleId.LEFT].vehicleType['colors'][self.vehicles[VehicleId.LEFT].color]['y'],
+                    self.vehicles[VehicleId.LEFT].vehicleType['width'],
+                    self.vehicles[VehicleId.LEFT].vehicleType['height']
+                ))
+                self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
+                y += 128 + 16
+
+                self.widgets.append(Label(self.game, 'Left player wins!', self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+                y += 48 + 16
+            else:
+                # Create vehicle image
+                vehicleImageSurface = self.game.vehiclesImage.subsurface((
+                    self.vehicles[VehicleId.RIGHT].vehicleType['colors'][self.vehicles[VehicleId.RIGHT].color]['x'],
+                    self.vehicles[VehicleId.RIGHT].vehicleType['colors'][self.vehicles[VehicleId.RIGHT].color]['y'],
+                    self.vehicles[VehicleId.RIGHT].vehicleType['width'],
+                    self.vehicles[VehicleId.RIGHT].vehicleType['height']
+                ))
+                self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
+                y += 128 + 16
+
+                self.widgets.append(Label(self.game, 'Right player wins!', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.WHITE))
+                y += 64 + 16
+
+            self.widgets.append(Label(self.game, 'Total: %s  -  %s' % (formatTime(self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime), formatTime(self.vehicles[VehicleId.RIGHT].finishTime - self.vehicles[VehicleId.RIGHT].startTime)), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+            y += 48 + 16
+
+            for i, time in enumerate(self.vehicles[VehicleId.LEFT].lapTimes):
+                self.widgets.append(Label(self.game, 'Lap %d: %s  -  %s' % (i + 1, formatTime(time), formatTime(self.vehicles[VehicleId.RIGHT].lapTimes[i])), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+                y += 48 + 16
+            y += 16
 
         self.widgets.append(Button(self.game, 'Continue', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
     # Continue button clicked event
     def continue_button_clicked(self):
         self.game.page = MenuPage(self.game)
+
+# The multi player page class
+class MultiPlayerPage(Page):
+    # Create multi player page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+    # Create multi player page widgets
+    def create_widgets(self):
+        y = (self.game.height - (72 + 64 + 16 + 24 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Multi Player', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 16
+        self.widgets.append(Label(self.game, 'Coming soon...', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        y += 64 + 24
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Back button clicked event
+    def back_button_clicked(self):
+        self.game.page = PlayPage(self.game)
 
 # The edit page class
 class EditorPage(Page):
@@ -515,12 +628,12 @@ class HelpPage(Page):
 
     # Create help page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + (64 + 16) * 5 + 64 + 32)) // 2
-        self.widgets.append(Label(self.game, 'Help', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        y += 96 + 16
+        y = (self.game.height - (72 + (64 + 16) * 5 + 64 + 32)) // 2
+        self.widgets.append(Label(self.game, 'Help', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 16
         self.widgets.append(Label(self.game, 'BassieRacing is a topdown 2D two player racing game', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
-        self.widgets.append(Label(self.game, 'You can control the left car by using WASD keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'You can control the main/left car by using WASD keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
         self.widgets.append(Label(self.game, 'You can control the right car by using the arrow keys', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 16
@@ -542,9 +655,9 @@ class SettingsPage(Page):
 
     # Create settings page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + (64 + 16) * 4 + 24 + 64)) // 2
-        self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
-        y += 96 + 16
+        y = (self.game.height - (72 + (64 + 16) * 4 + 24 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Intro disabled', 'Intro enabled' ], self.game.settings['intro']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.intro_toggle_button_changed))
         y += 64 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Fancy music disabled', 'Fancy music enabled' ], self.game.settings['music']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.music_toggle_button_changed))

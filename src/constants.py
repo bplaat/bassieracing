@@ -46,6 +46,12 @@ class TextAlign:
     CENTER = 1
     RIGHT = 2
 
+# The game mode constants class
+class GameMode:
+    SINGLE_PLAYER = 0
+    SPLIT_SCREEN = 1
+    MULTI_PLAYER = 2
+
 # The vehicle id constants class
 class VehicleId:
     LEFT = 0
