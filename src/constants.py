@@ -21,6 +21,7 @@ class Config:
     EXPLOSION_ANIMATION_FRAME_TIME = 0.2
     COUNTDOWN_CLOCK_TICKS = 4
     COUNTDOWN_CLOCK_TICK_TIME = 0.5
+    FINISH_LAP_TIME_TIMEOUT = 1.5
 
     # Editor constants
     EDITOR_CAMERA_BORDER = 12
@@ -44,3 +45,13 @@ class TextAlign:
     LEFT = 0
     CENTER = 1
     RIGHT = 2
+
+# The vehicle id constants class
+class VehicleId:
+    LEFT = 0
+    RIGHT = 1
+
+# The vehicle colors constants class
+class VehicleColor:
+    BLUE = 0
+    RED = 1

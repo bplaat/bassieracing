@@ -7,6 +7,7 @@ import os
 import pygame
 import random
 from stats import *
+from utils import *
 
 # The rect widget class
 class Rect:
@@ -390,7 +391,7 @@ class CountdownClock:
 # The map selector widget
 class MapSelector:
     # Create map selector widget
-    def __init__(self, game, x, y, width, height, selectedMapIndex, customMapPaths, changedCallback = None, callbackExtra = None):
+    def __init__(self, game, x, y, width, height, selectedMapIndex, changedCallback = None, callbackExtra = None):
         self.game = game
         self.x = x
         self.y = y
@@ -402,11 +403,20 @@ class MapSelector:
         # List default maps
         self.mapPaths = [ os.path.abspath('assets/maps/' + filename) for filename in os.listdir('assets/maps/') if os.path.isfile('assets/maps/' + filename) ]
 
-        # Add previous custom maps
-        for customMapPath in customMapPaths:
+        # Add custom maps from settings
+        customMapToRemove = []
+        for customMapPath in game.settings['custom-maps']:
             customMapPath = os.path.abspath(customMapPath)
             if customMapPath not in self.mapPaths:
-                self.mapPaths.append(customMapPath)
+                if os.path.isfile(customMapPath):
+                    self.mapPaths.append(customMapPath)
+                else:
+                    customMapToRemove.append(customMapPath)
+
+        # Remove deleted or moved custom maps
+        for customMapPath in customMapToRemove:
+            del game.settings['custom-maps'][game.settings['custom-maps'].index(customMapPath)]
+        game.save_settings()
 
         # Load maps
         self.maps = []
@@ -482,6 +492,9 @@ class MapSelector:
             map = Map.load_from_file(file_path)
             if map != None:
                 self.mapPaths.append(file_path)
+                if file_path not in self.game.settings['custom-maps']:
+                    self.game.settings['custom-maps'].append(file_path)
+                    self.game.save_settings()
                 self.maps.append(map)
                 self.set_selected(len(self.maps) - 1)
 
@@ -633,7 +646,11 @@ class VehicleViewport:
 
         # Create vehicle viewport widgets
         self.widgets = []
-        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (map.laps if vehicle.lap + 1 > map.laps else vehicle.lap + 1, self.map.laps), 24, height - 24 - 24 - 24 - 16, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
+        time = 0 if self.vehicle.startTime == None else self.game.time - self.vehicle.startTime
+        self.timeLabel = Label(self.game, 'Time: ' + formatTime(time),
+            24, height - 24 - 24 - (24 + 16) * 2, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
+        self.widgets.append(self.timeLabel)
+        self.lapLabel = Label(self.game, 'Lap: %d/%d' % (map.laps if vehicle.lap + 1 > map.laps else vehicle.lap + 1, self.map.laps), 24, height - 24 - 24 - (24 + 16), width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.lapLabel)
         self.speedLabel = Label(self.game, 'Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
@@ -644,12 +661,15 @@ class VehicleViewport:
             self.countdownClock = CountdownClock(self.game, (width - Config.COUNTDOWN_CLOCK_TICKS * tickSize) // 2, ((height - 256) - tickSize) // 2, Config.COUNTDOWN_CLOCK_TICKS * tickSize, tickSize)
             self.widgets.append(self.countdownClock)
 
+        # Create finish label but hide it
+        self.finishLabel = Label(self.game, 'Finished!', 0, 0, width, height - 128, game.titleFont, Color.BLACK, TextAlign.CENTER)
+
     # Handle vehicle viewport events
     def handle_event(self, event):
         # Handle keydown events
         if event.type == pygame.KEYDOWN:
             # Handle left player movement
-            if self.vehicle.id == 0:
+            if self.vehicle.id == VehicleId.LEFT:
                 if event.key == pygame.K_w:
                     self.vehicle.moving = Vehicle.MOVING_FORWARD
                 if event.key == pygame.K_s:
@@ -660,7 +680,7 @@ class VehicleViewport:
                     self.vehicle.turning = Vehicle.TURNING_RIGHT
 
             # Handle right player movement
-            if self.vehicle.id == 1:
+            if self.vehicle.id == VehicleId.RIGHT:
                 if event.key == pygame.K_UP:
                     self.vehicle.moving = Vehicle.MOVING_FORWARD
                 if event.key == pygame.K_DOWN:
@@ -673,14 +693,14 @@ class VehicleViewport:
          # Handle keyup events
         if event.type == pygame.KEYUP:
             # Handle left player movement
-            if self.vehicle.id == 0:
+            if self.vehicle.id == VehicleId.LEFT:
                 if event.key == pygame.K_w or event.key == pygame.K_s:
                     self.vehicle.moving = Vehicle.NOT_MOVING
                 if event.key == pygame.K_a or event.key == pygame.K_d:
                     self.vehicle.turning = Vehicle.NOT_TURNING
 
             # Handle right player movement
-            if self.vehicle.id == 1:
+            if self.vehicle.id == VehicleId.RIGHT:
                 if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
                     self.vehicle.moving = Vehicle.NOT_MOVING
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -693,6 +713,11 @@ class VehicleViewport:
         # Update countdown clock if vehicle is not started
         if not self.vehicle.started:
             self.countdownClock.update(delta)
+
+        # When vehicle is finished display finished lap
+        if self.vehicle.finished:
+            if self.finishLabel not in self.widgets:
+                self.widgets.append(self.finishLabel)
 
     # Draw the vehicle viewport
     def draw(self, surface):
@@ -709,6 +734,13 @@ class VehicleViewport:
         # Draw all the vehicles to surface
         for vehicle in self.vehicles:
             vehicle.draw(self.surface, self.camera)
+
+        # Update time label
+        if self.vehicle.finishTime != None and self.game.time - self.vehicle.finishTime < Config.FINISH_LAP_TIME_TIMEOUT:
+            time = self.vehicle.lapTimes[self.vehicle.lap - 1]
+        else:
+            time = 0 if self.vehicle.startTime == None else self.game.time - self.vehicle.startTime
+        self.timeLabel.set_text('Time: ' + formatTime(time))
 
         # Update lap label
         self.lapLabel.set_text('Lap: %d/%d' % (self.map.laps if self.vehicle.lap + 1 > self.map.laps else self.vehicle.lap + 1, self.map.laps))

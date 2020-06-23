@@ -56,6 +56,7 @@ class Game:
         self.clickSound = pygame.mixer.Sound('assets/sounds/click.wav')
         self.crashSound = pygame.mixer.Sound('assets/sounds/crash.wav')
         self.introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
+        self.finishSound = pygame.mixer.Sound('assets/sounds/finish.wav')
         self.lapSound = pygame.mixer.Sound('assets/sounds/lap.wav')
         self.tickSound = pygame.mixer.Sound('assets/sounds/tick.wav')
         self.tockSound = pygame.mixer.Sound('assets/sounds/tock.wav')
@@ -76,7 +77,8 @@ class Game:
                 },
                 'sound-effects': {
                     'enabled': True
-                }
+                },
+                'custom-maps': []
             }
         self.musicStart = self.settings['music']['position']
 

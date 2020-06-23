@@ -68,9 +68,13 @@ class Vehicle:
         self.vehicles = vehicles
 
         self.lap = 0
+        self.lapTimes = [ None for i in range(map.laps) ]
         self.checkedCheckpoints = [ False for checkpoint in map.checkpoints ]
 
         self.started = False
+        self.startTime = None
+        self.finished = False
+        self.finishTime = None
         self.crashTime = None
         self.lastCheckpoint = self.map.finish
         self.crashed = False
@@ -103,8 +107,8 @@ class Vehicle:
 
     # Update vehicle
     def update(self, delta, camera):
-        # When not started do nothing
-        if not self.started:
+        # When not started or when finished do nothing
+        if not self.started or self.finished:
             return
 
         # When crashed
@@ -117,17 +121,17 @@ class Vehicle:
                 # Teleport back to last checkpoint
                 if self.lastCheckpoint['height'] > self.lastCheckpoint['width']:
                     self.x = (self.lastCheckpoint['x'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
-                    if self.id == 0:
+                    if self.id == VehicleId.LEFT:
                         self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
-                    if self.id == 1:
+                    if self.id == VehicleId.RIGHT:
                         self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     self.angle = math.radians(270)
                     self.velocity = 0
                     self.acceleration = 0
                 else:
-                    if self.id == 0:
+                    if self.id == VehicleId.LEFT:
                         self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
-                    if self.id == 1:
+                    if self.id == VehicleId.RIGHT:
                         self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height']) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     self.angle = 0
@@ -204,11 +208,19 @@ class Vehicle:
 
                 # If so go to the next lap
                 if allChecked:
+                    self.lapTimes[self.lap] = self.game.time - self.startTime
+                    self.finishTime = self.game.time
                     self.lap += 1
                     self.checkedCheckpoints = [ False for checkpoint in self.map.checkpoints ]
 
-                    if self.game.settings['sound-effects']['enabled']:
-                        self.game.lapSound.play()
+                    if self.lap == self.map.laps:
+                        self.finished = True
+
+                        if self.game.settings['sound-effects']['enabled']:
+                            self.game.finishSound.play()
+                    else:
+                        if self.game.settings['sound-effects']['enabled']:
+                            self.game.lapSound.play()
 
             # When tile is a checkpoint tile
             if self.map.track[tile['y']][tile['x']] == 3:
@@ -235,7 +247,7 @@ class Vehicle:
         # Check if vehicles are to close to crash
         if self.map.crashes['enabled']:
             for vehicle in self.vehicles:
-                if vehicle != self:
+                if vehicle != self and not vehicle.finished:
                     # Calculate distence between two vehicles
                     distence = math.sqrt((self.x - vehicle.x) ** 2 + (self.y - vehicle.y) ** 2)
 
