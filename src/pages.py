@@ -4,6 +4,7 @@
 from constants import *
 import math
 from objects import *
+import os
 import random
 import tkinter.filedialog
 from utils import *
@@ -70,7 +71,7 @@ class IntroPage(Page):
     # Create intro page widgets
     def create_widgets(self):
         y = (self.game.height - (256 + 32 + 96 + 16 + 64)) // 2
-        self.widgets.append(Image('assets/images/logo.png', 0, y, self.game.width, 256))
+        self.widgets.append(Image(self.game, 'assets/images/logo.png', 0, y, self.game.width, 256))
         y += 256 + 32
         self.widgets.append(Label(self.game, 'BassieSoft', 0, y, self.game.width, 96, self.game.titleFont, Color.BLACK))
         y += 96 + 16
@@ -178,7 +179,7 @@ class PlayPage(Page):
         y += 64 + 16
         self.widgets.append(Button(self.game, 'Split Screen', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.split_screen_button_clicked))
         y += 64 + 16
-        self.widgets.append(Button(self.game, 'Multi Player', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.multi_player_button_clicked))
+        self.widgets.append(Button(self.game, 'Multiplayer', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.multiplayer_button_clicked))
         y += 64 + 24
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
@@ -190,9 +191,9 @@ class PlayPage(Page):
     def split_screen_button_clicked(self):
         self.game.page = SelectMapPage(self.game, GameMode.SPLIT_SCREEN)
 
-    # Multi Player button clicked
-    def multi_player_button_clicked(self):
-        self.game.page = MultiPlayerPage(self.game)
+    # Multiplayer button clicked
+    def multiplayer_button_clicked(self):
+        self.game.page = MultiplayerPage(self.game)
 
     # Back button clicked event
     def back_button_clicked(self):
@@ -397,11 +398,11 @@ class StatsPage(Page):
 
         # Calculate fastest time
         if gamemode == GameMode.SINGLE_PLAYER:
-            fastestTime = self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime
-        if game == GameMode.SPLIT_SCREEN:
+            fastestTime = vehicles[VehicleId.LEFT].finishTime - vehicles[VehicleId.LEFT].startTime
+        if gamemode == GameMode.SPLIT_SCREEN:
             fastestTime = min(
-                self.vehicles[VehicleId.LEFT].finishTime - self.vehicles[VehicleId.LEFT].startTime,
-                self.vehicles[VehicleId.RIGHT].finishTime - self.vehicles[VehicleId.RIGHT].startTime
+                vehicles[VehicleId.LEFT].finishTime - vehicles[VehicleId.LEFT].startTime,
+                vehicles[VehicleId.RIGHT].finishTime - vehicles[VehicleId.RIGHT].startTime
             )
 
         # Save high score
@@ -437,7 +438,7 @@ class StatsPage(Page):
                 self.vehicles[VehicleId.LEFT].vehicleType['width'],
                 self.vehicles[VehicleId.LEFT].vehicleType['height']
             ))
-            self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
+            self.widgets.append(Image(self.game, vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
             y += 128 + 16
 
             self.widgets.append(Label(self.game, 'You won!', self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
@@ -461,7 +462,7 @@ class StatsPage(Page):
                     self.vehicles[VehicleId.LEFT].vehicleType['width'],
                     self.vehicles[VehicleId.LEFT].vehicleType['height']
                 ))
-                self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
+                self.widgets.append(Image(self.game, vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
                 y += 128 + 16
 
                 self.widgets.append(Label(self.game, 'Left player wins!', self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
@@ -474,7 +475,7 @@ class StatsPage(Page):
                     self.vehicles[VehicleId.RIGHT].vehicleType['width'],
                     self.vehicles[VehicleId.RIGHT].vehicleType['height']
                 ))
-                self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
+                self.widgets.append(Image(self.game, vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
                 y += 128 + 16
 
                 self.widgets.append(Label(self.game, 'Right player wins!', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.WHITE))
@@ -494,16 +495,16 @@ class StatsPage(Page):
     def continue_button_clicked(self):
         self.game.page = MenuPage(self.game)
 
-# The multi player page class
-class MultiPlayerPage(Page):
-    # Create multi player page
+# The multiplayer page class
+class MultiplayerPage(Page):
+    # Create multiplayer page
     def __init__(self, game):
         Page.__init__(self, game)
 
-    # Create multi player page widgets
+    # Create multiplayer page widgets
     def create_widgets(self):
         y = (self.game.height - (72 + 64 + 16 + 24 + 64)) // 2
-        self.widgets.append(Label(self.game, 'Multi Player', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        self.widgets.append(Label(self.game, 'Multiplayer', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
         y += 72 + 16
         self.widgets.append(Label(self.game, 'Coming soon...', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
         y += 64 + 24
@@ -615,6 +616,8 @@ class EditorPage(Page):
                 self.game.focus()
                 self.file_path = file_path
                 pygame.display.set_caption(file_path + ' - BassieRacing')
+                self.map.name = os.path.splitext(os.path.basename(file_path))[0]
+                self.map.blend_track(True)
 
         if self.file_path != None:
             self.map.save_to_file(self.file_path)

@@ -236,12 +236,15 @@ class ComboBox(Button):
 # The image widget class
 class Image:
     # Create image
-    def __init__(self, image, x, y, width, height):
+    def __init__(self, game, image, x, y, width, height, clickCallback = None, callbackExtra = None):
+        self.game = game
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.set_image(image)
+        self.clickCallback = clickCallback
+        self.callbackExtra = callbackExtra
 
     # Set image image
     def set_image(self, image):
@@ -256,6 +259,23 @@ class Image:
 
     # Handle image events
     def handle_event(self, event):
+        # Handle mouse events
+        if (
+            self.clickCallback != None and
+            event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP) and
+            event.pos[0] >= self.x and event.pos[1] >= self.y and
+            event.pos[0] < self.x + self.width and event.pos[1] < self.y + self.height
+        ):
+            if event.type == pygame.MOUSEBUTTONUP:
+                if self.game.settings['sound-effects']['enabled']:
+                    self.game.clickSound.play()
+
+                if self.callbackExtra != None:
+                    self.clickCallback(self.callbackExtra)
+                else:
+                    self.clickCallback()
+            return True
+
         return False
 
     # Draw image
@@ -563,7 +583,7 @@ class VehicleSelector:
         self.widgets = []
 
         ry = y + (height - (128 + 32 + 48 + (32 + 16) * 3)) // 2
-        self.vehicleImage = Image(None, x, ry, width, 128)
+        self.vehicleImage = Image(self.game, None, x, ry, width, 128)
         self.widgets.append(self.vehicleImage)
         ry += 128 + 32
         self.nameLabel = Label(self.game, '', x, ry, width, 48, game.textFont, Color.WHITE)
@@ -673,7 +693,7 @@ class VehicleViewport:
 
         # Check if the vehicle is already started
         if not self.vehicle.started:
-            tickSize = self.width // 8
+            tickSize = self.width // 12
             self.countdownClock = CountdownClock(self.game, (width - Config.COUNTDOWN_CLOCK_TICKS * tickSize) // 2, ((height - 256) - tickSize) // 2, Config.COUNTDOWN_CLOCK_TICKS * tickSize, tickSize)
             self.widgets.append(self.countdownClock)
         else:
@@ -738,7 +758,7 @@ class VehicleViewport:
             if self.finishLabel not in self.widgets:
                 self.widgets.append(self.finishLabel)
             if self.finishTimeLabel not in self.widgets:
-                self.finishTimeLabel.set_text("Time: " + formatTime(self.vehicle.finishTime - self.vehicle.startTime))
+                self.finishTimeLabel.set_text('Time: ' + formatTime(self.vehicle.finishTime - self.vehicle.startTime))
                 self.widgets.append(self.finishTimeLabel)
 
     # Draw the vehicle viewport

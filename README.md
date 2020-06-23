@@ -10,4 +10,4 @@ If you want to download the game, go to the [releases](https://github.com/bplaat
 ## License
 Copyright (c) 2020 Bastiaan van der Plaat
 
-Licensed under the [MIT](LICENSE) license.
+Licensed under the [MIT](LICENSE) license

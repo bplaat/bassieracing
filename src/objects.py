@@ -9,6 +9,7 @@ import pygame
 import random
 from stats import *
 import tkinter.messagebox
+from utils import *
 
 # The camera class
 class Camera:
@@ -360,8 +361,9 @@ class Map:
             tkinter.messagebox.showinfo('Not a BassieRacing map!', 'This JSON file is not a BassieRacing Map')
             return
 
-        if data['version'] != Config.VERSION:
-            tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur\n\nFile version: ' + data['version'] + '\nGame version: ' + Config.VERSION)
+        if checkVersion(data['version']):
+            tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur\n\n' +
+                'Map game version: ' + data['version'] + '\nThis game version: ' + Config.VERSION)
 
         map = Map(data['id'], data['name'], data['width'], data['height'])
 
@@ -553,11 +555,11 @@ class Map:
         return False
 
     # Blend track
-    def blend_track(self, showNoFinishMessage):
+    def blend_track(self, showNoErrorMessages):
         # Find map finish
         if not self.find_finish():
-            if showNoFinishMessage:
-                tkinter.messagebox.showinfo('Map has no finish!', 'This map has no finish set start point / finish to map center')
+            if showNoErrorMessages:
+                tkinter.messagebox.showinfo('Map has no finish!', 'This map has no finish, this can cause the game to crash')
             self.finish = {
                 'x': self.width // 2,
                 'y': self.height // 2,
@@ -604,6 +606,9 @@ class Map:
                         })
 
                         x += width
+
+        if len(self.checkpoints) == 0 and showNoErrorMessages:
+            tkinter.messagebox.showinfo('Map has no checkpoints!', 'This map has no checkpoints, this can cause the game to crash')
 
         # Blend track tiles
         self.blendedTrack = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]

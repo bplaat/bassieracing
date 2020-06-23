@@ -15,6 +15,7 @@ import pygame
 import time
 import tkinter
 import urllib.request
+from utils import *
 
 # The game class
 class Game:
@@ -117,7 +118,7 @@ class Game:
             version = version[:version.find('\'')]
 
             # Do final version logic
-            if version != Config.VERSION:
+            if checkVersion(version):
                 self.newVersionAvailable = version
             else:
                 self.newVersionAvailable = None

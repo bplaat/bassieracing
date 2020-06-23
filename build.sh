@@ -1,4 +1,4 @@
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 # To build a release build for Windows you need also: pyintallar, upx,
 # ImageMagick and 7zip install and accesable via the path

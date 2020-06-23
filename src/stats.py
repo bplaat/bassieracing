@@ -5,7 +5,7 @@ import math
 
 # The vehicles data
 vehicles = [
-    # Speedy Car
+    # Speedy Car (Car 1)
     {
         'name': 'Speedy Car',
         'colors': [
@@ -18,9 +18,24 @@ vehicles = [
             {
                 'x': 71,
                 'y': 232
+            },
+            # Green
+            {
+                'x': 0,
+                'y': 363
+            },
+            # Yellow
+            {
+                'x': 142,
+                'y': 0
+            },
+            # Black
+            {
+                'x': 142,
+                'y': 131
             }
         ],
-        'width': 70,
+        'width': 71,
         'height': 131,
         'forwardAcceleration': 200,
         'maxForwardVelocity': 700,
@@ -29,7 +44,7 @@ vehicles = [
         'turningSpeed': math.radians(90)
     },
 
-    # CyberTruck
+    # CyberTruck (Car 4)
     {
         'name': 'CyberTruck',
         'colors': [
@@ -42,6 +57,21 @@ vehicles = [
             {
                 'x': 352,
                 'y': 363
+            },
+            # Green
+            {
+                'x': 422,
+                'y': 131
+            },
+            # Yellow
+            {
+                'x': 142,
+                'y': 383
+            },
+            # Black
+            {
+                'x': 213,
+                'y': 0
             }
         ],
         'width': 70,
@@ -50,10 +80,49 @@ vehicles = [
         'maxForwardVelocity': 800,
         'backwardAcceleration': -100,
         'maxBackwardVelocity': -300,
-        'turningSpeed': math.radians(65)
+        'turningSpeed': math.radians(75)
     },
 
-    # Torchcycle
+    # Fire Car (Car 3)
+    {
+        'name': 'Fire Car',
+        'colors': [
+            # Blue
+            {
+                'x': 282,
+                'y': 252
+            },
+            # Red
+            {
+                'x': 353,
+                'y': 0
+            },
+            # Green
+            {
+                'x': 422,
+                'y': 262
+            },
+            # Yellow
+            {
+                'x': 212,
+                'y': 262
+            },
+            # Black
+            {
+                'x': 212,
+                'y': 393
+            }
+        ],
+        'width': 70,
+        'height': 131,
+        'forwardAcceleration': 150,
+        'maxForwardVelocity': 600,
+        'backwardAcceleration': -50,
+        'maxBackwardVelocity': -200,
+        'turningSpeed': math.radians(145)
+    },
+
+    # Torchcycle (Motorcycle)
     {
         'name': 'Torchcycle',
         'colors': [
@@ -66,6 +135,21 @@ vehicles = [
             {
                 'x': 422,
                 'y': 393
+            },
+            # Green
+            {
+                'x': 423,
+                'y': 0
+            },
+            # Yellow
+            {
+                'x': 353,
+                'y': 131
+            },
+            # Black
+            {
+                'x': 71,
+                'y': 479
             }
         ],
         'width': 44,
@@ -77,7 +161,7 @@ vehicles = [
         'turningSpeed': math.radians(180)
     },
 
-    # MemeRacer
+    # MemeRacer (Car 2)
     {
         'name': 'MemeRacer',
         'colors': [
@@ -90,6 +174,21 @@ vehicles = [
             {
                 'x': 71,
                 'y': 363
+            },
+            # Green
+            {
+                'x': 71,
+                'y': 0
+            },
+            # Yellow
+            {
+                'x': 71,
+                'y': 116
+            },
+            # Black
+            {
+                'x': 0,
+                'y': 0
             }
         ],
         'width': 71,
@@ -98,7 +197,46 @@ vehicles = [
         'maxForwardVelocity': 400,
         'backwardAcceleration': -250,
         'maxBackwardVelocity': -1000,
-        'turningSpeed': math.radians(80)
+        'turningSpeed': math.radians(90)
+    },
+
+    # Deluxe 3000 (Car 5)
+    {
+        'name': 'Deluxe 3000',
+        'colors': [
+            # Blue
+            {
+                'x': 283,
+                'y': 0
+            },
+            # Red
+            {
+                'x': 352,
+                'y': 242
+            },
+            # Green
+            {
+                'x': 283,
+                'y': 121
+            },
+            # Yellow
+            {
+                'x': 142,
+                'y': 262
+            },
+            # Black
+            {
+                'x': 213,
+                'y': 131
+            }
+        ],
+        'width': 70,
+        'height': 121,
+        'forwardAcceleration': 175,
+        'maxForwardVelocity': 650,
+        'backwardAcceleration': -100,
+        'maxBackwardVelocity': -150,
+        'turningSpeed': math.radians(120)
     }
 ]
 

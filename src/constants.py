@@ -4,7 +4,7 @@
 class Config:
     # App constants
     NAME = 'BassieRacing'
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
     GIT_REPO_URL = 'https://github.com/bplaat/bassieracing'
 
     # Window constants
@@ -61,3 +61,6 @@ class VehicleId:
 class VehicleColor:
     BLUE = 0
     RED = 1
+    GREEN = 2
+    YELLOW = 3
+    BLACK = 4
