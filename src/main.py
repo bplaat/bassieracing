@@ -28,6 +28,8 @@ class Game:
 
         # Init the window
         pygame.display.set_caption('BassieRacing')
+        self.iconImage = pygame.image.load('assets/images/icon.png')
+        pygame.display.set_icon(self.iconImage)
         self.width = Config.WIDTH
         self.height = Config.HEIGHT
         self.fullscreen = False
