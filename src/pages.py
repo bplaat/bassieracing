@@ -298,7 +298,7 @@ class GamePage(Page):
         self.leftVehicleViewport.update(delta)
         self.rightVehicleViewport.update(delta)
 
-        # When countdown is over start cars
+        # When countdown is over start vehicle
         if not self.leftVehicle.started and self.leftVehicleViewport.countdownClock.ended:
             self.leftVehicle.started = True
             self.leftVehicle.startTime = self.game.time
@@ -328,7 +328,7 @@ class StatsPage(Page):
 
     # Create stats page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + 16 + 128 + 16 + 64 + 16 + (48 + 16) * len(self.leftVehicle.lapTimes) + 16 + 64)) // 2
+        y = (self.game.height - (96 + 16 + 128 + 16 + (48 + 16) * (2 + len(self.leftVehicle.lapTimes)) + 16 + 64)) // 2
         self.widgets.append(Label(self.game, 'Game stats', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
 
@@ -343,8 +343,8 @@ class StatsPage(Page):
             self.widgets.append(Image(vehicleImageSurface, self.game.width // 4, y, self.game.width // 2, 128))
             y += 128 + 16
 
-            self.widgets.append(Label(self.game, 'Left player wins!', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.WHITE))
-            y += 64 + 16
+            self.widgets.append(Label(self.game, 'Left player wins!', self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+            y += 48 + 16
         else:
             # Create vehicle image
             vehicleImageSurface = self.game.vehiclesImage.subsurface((
@@ -358,6 +358,9 @@ class StatsPage(Page):
 
             self.widgets.append(Label(self.game, 'Right player wins!', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.WHITE))
             y += 64 + 16
+
+        self.widgets.append(Label(self.game, 'Total: %s  -  %s' % (formatTime(self.leftVehicle.finishTime - self.leftVehicle.startTime), formatTime(self.rightVehicle.finishTime - self.rightVehicle.startTime)), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
+        y += 48 + 16
 
         for i, time in enumerate(self.leftVehicle.lapTimes):
             self.widgets.append(Label(self.game, 'Lap %d: %s  -  %s' % (i + 1, formatTime(time), formatTime(self.rightVehicle.lapTimes[i])), self.game.width // 4, y, self.game.width // 2, 48, self.game.textFont, Color.WHITE))
@@ -376,8 +379,7 @@ class EditorPage(Page):
     def __init__(self, game):
         self.file_path = None
         pygame.display.set_caption('Unsaved - BassieRacing')
-        self.map = Map('Custom Map', 32, 32)
-        self.map.generate()
+        self.map = Map.generate_map(game, 32, 32)
         self.grid = False
         self.mapCamera = { 'x': None, 'y': None }
         self.selectedSizeIndex = 1
@@ -433,15 +435,13 @@ class EditorPage(Page):
         # When standard size
         for i, size in enumerate(Config.MAP_SIZES):
             if i == self.sizeComboBox.selectedOptionIndex:
-                self.map = Map('Custom Map', size, size)
-                self.map.generate()
+                self.map = Map.generate_map(self.game, size, size)
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
                 return
 
         # When custom size
-        self.map = Map('Custom Map', 32, 32)
-        self.map.generate()
+        self.map = Map.generate_map(self.game, 32, 32)
         self.mapEditor.map = self.map
         self.mapEditor.center_camera()
         self.sizeComboBox.set_selected(1)
@@ -542,7 +542,7 @@ class SettingsPage(Page):
 
     # Create settings page widgets
     def create_widgets(self):
-        y = (self.game.height - (96 + (64 + 16) * 3 + 24 + 64)) // 2
+        y = (self.game.height - (96 + (64 + 16) * 4 + 24 + 64)) // 2
         self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 96, self.game.titleFont, Color.WHITE))
         y += 96 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Intro disabled', 'Intro enabled' ], self.game.settings['intro']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.intro_toggle_button_changed))
@@ -550,6 +550,8 @@ class SettingsPage(Page):
         self.widgets.append(ToggleButton(self.game, [ 'Fancy music disabled', 'Fancy music enabled' ], self.game.settings['music']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.music_toggle_button_changed))
         y += 64 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Sound effects disabled', 'Sound effects enabled' ], self.game.settings['sound-effects']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.sound_effects_toggle_button_changed))
+        y += 64 + 24
+        self.widgets.append(Button(self.game, 'Clear custom maps cache', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.clear_custom_maps_cache_button_clicked))
         y += 64 + 24
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
@@ -574,6 +576,11 @@ class SettingsPage(Page):
     # Sound effects toggle button changed
     def sound_effects_toggle_button_changed(self, active):
         self.game.settings['sound-effects']['enabled'] = active
+        self.game.save_settings()
+
+    # Clear custom maps cache button clicked
+    def clear_custom_maps_cache_button_clicked(self):
+        self.game.settings['custom-maps'] = []
         self.game.save_settings()
 
     # Back button clicked event

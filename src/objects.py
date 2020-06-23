@@ -187,7 +187,7 @@ class Vehicle:
             'y': math.floor(self.y / camera.tileSize)
         }
 
-        # Check if the car is inside the map
+        # Check if the vehicle is inside the map
         if tile['x'] >= 0 and tile['y'] >= 0 and tile['x'] < self.map.width and tile['y'] < self.map.height:
             # Check crash when no on a track tile
             if self.map.track[tile['y']][tile['x']] == 0 and self.map.crashes['enabled']:
@@ -208,7 +208,7 @@ class Vehicle:
 
                 # If so go to the next lap
                 if allChecked:
-                    self.lapTimes[self.lap] = self.game.time - self.startTime
+                    self.lapTimes[self.lap] = self.game.time - (self.finishTime if self.finishTime != None else self.startTime)
                     self.finishTime = self.game.time
                     self.lap += 1
                     self.checkedCheckpoints = [ False for checkpoint in self.map.checkpoints ]
@@ -281,64 +281,71 @@ class Vehicle:
 
     # Draw vehicle
     def draw(self, surface, camera):
-        # When crashed draw crash animation
-        if self.crashed:
-            # Calculate crash animation frame position
-            x = math.floor(self.x - Config.TILE_SPRITE_SIZE / 2 - (camera.x - surface.get_width() / 2))
-            y = math.floor(self.y - Config.TILE_SPRITE_SIZE / 2 - (camera.y - surface.get_height() / 2))
+        # Draw vehicle when not finished
+        if not self.finished:
+            # When crashed draw crash animation
+            if self.crashed:
+                # Calculate crash animation frame position
+                x = math.floor(self.x - Config.TILE_SPRITE_SIZE / 2 - (camera.x - surface.get_width() / 2))
+                y = math.floor(self.y - Config.TILE_SPRITE_SIZE / 2 - (camera.y - surface.get_height() / 2))
 
-            # Draw if visible
-            if (
-                x + Config.TILE_SPRITE_SIZE >= 0 and y + Config.TILE_SPRITE_SIZE >= 0 and
-                x - Config.TILE_SPRITE_SIZE < surface.get_width() and y - Config.TILE_SPRITE_SIZE < surface.get_height()
-            ):
-                surface.blit(self.game.explosionImage, ( x, y ),
-                    ( math.floor((self.game.time - self.crashTime) / Config.EXPLOSION_ANIMATION_FRAME_TIME) * Config.TILE_SPRITE_SIZE, 0, Config.TILE_SPRITE_SIZE, Config.TILE_SPRITE_SIZE ))
+                # Draw if visible
+                if (
+                    x + Config.TILE_SPRITE_SIZE >= 0 and y + Config.TILE_SPRITE_SIZE >= 0 and
+                    x - Config.TILE_SPRITE_SIZE < surface.get_width() and y - Config.TILE_SPRITE_SIZE < surface.get_height()
+                ):
+                    surface.blit(self.game.explosionImage, ( x, y ),
+                        ( math.floor((self.game.time - self.crashTime) / Config.EXPLOSION_ANIMATION_FRAME_TIME) * Config.TILE_SPRITE_SIZE, 0, Config.TILE_SPRITE_SIZE, Config.TILE_SPRITE_SIZE ))
 
-        # Else draw vehicle
-        else:
-            # Rotate vehicle image
-            rotatedVehicleImage = pygame.transform.rotate(camera.vehicleImageCache[self.id], math.degrees(self.angle))
-            x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() / 2))
-            y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() / 2))
+            # Else draw vehicle
+            else:
+                # Rotate vehicle image
+                rotatedVehicleImage = pygame.transform.rotate(camera.vehicleImageCache[self.id], math.degrees(self.angle))
+                x = math.floor(self.x - rotatedVehicleImage.get_width() / 2 - (camera.x - surface.get_width() / 2))
+                y = math.floor(self.y - rotatedVehicleImage.get_height() / 2 - (camera.y - surface.get_height() / 2))
 
-            # Draw if visible
-            if (
-                x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
-                x - rotatedVehicleImage.get_width() < surface.get_width() and y - rotatedVehicleImage.get_height() < surface.get_height()
-            ):
-                surface.blit(rotatedVehicleImage, ( x, y ))
+                # Draw if visible
+                if (
+                    x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
+                    x - rotatedVehicleImage.get_width() < surface.get_width() and y - rotatedVehicleImage.get_height() < surface.get_height()
+                ):
+                    surface.blit(rotatedVehicleImage, ( x, y ))
 
 # The map class
 class Map:
-    def __init__(self, name, width, height):
+    def __init__(self, id, name, width, height):
+        self.id = id
         self.name = name
         self.width = width
         self.height = height
 
     # Generate random map
-    def generate(self):
-        self.laps = Config.DEFAULT_LAPS_COUNT
-        self.crashes = {
+    @staticmethod
+    def generate_map(game, width, height):
+        map = Map((int)(game.time * 1000), 'Custom Map', width, height)
+        map.laps = Config.DEFAULT_LAPS_COUNT
+        map.crashes = {
             'enabled': True,
             'timeout': Config.DEFAULT_CRASH_TIMEOUT
         }
 
-        self.noise = {
+        map.noise = {
             'perlin': PerlinNoise(),
             'x': random.randint(-1000000, 1000000),
             'y': random.randint(-1000000, 1000000)
         }
 
-        self.terrain = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
-        for y in range(self.height):
-            for x in range(self.width):
-                self.terrain[y][x] = self.generate_terrain_tile(x, y)
-        self.fix_noise_errors()
-        self.blend_terrain()
+        map.terrain = [ [ 0 for x in range(width) ] for y in range(height) ]
+        for y in range(height):
+            for x in range(width):
+                map.terrain[y][x] = Map.generate_terrain_tile(map, x, y)
+        map.fix_noise_errors()
+        map.blend_terrain()
 
-        self.track = [ [ 0 for x in range(self.width) ] for y in range(self.height) ]
-        self.blend_track(False)
+        map.track = [ [ 0 for x in range(width) ] for y in range(height) ]
+        map.blend_track(False)
+
+        return map
 
     # Create map by loading a JSON string
     @staticmethod
@@ -356,7 +363,7 @@ class Map:
         if data['version'] != Config.VERSION:
             tkinter.messagebox.showinfo('Map uses different game version!', 'This map uses a different game version, some incompatibility may occur\n\nFile version: ' + data['version'] + '\nGame version: ' + Config.VERSION)
 
-        map = Map(data['name'], data['width'], data['height'])
+        map = Map(data['id'], data['name'], data['width'], data['height'])
 
         map.laps = data['laps']
         map.crashes = {
@@ -388,8 +395,9 @@ class Map:
         with open(file_path, 'w') as file:
             data = {
                 'type': 'BassieRacing Map',
-                'version': Config.VERSION,
 
+                'id': self.id,
+                'version': Config.VERSION,
                 'name': self.name,
                 'width': self.width,
                 'height': self.height,

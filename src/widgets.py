@@ -312,14 +312,15 @@ class MiniMap:
 
             # Draw the vehicles if given
             for vehicle in self.vehicles:
-                rotatedVehicleImage = pygame.transform.rotate(self.camera.vehicleImageCache[vehicle.id], math.degrees(vehicle.angle))
-                x = math.floor((vehicle.x / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_width() / 2 - (self.camera.x - self.width / 2))
-                y = math.floor((vehicle.y / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_height() / 2 - (self.camera.y - self.height / 2))
-                if (
-                    x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
-                    x - rotatedVehicleImage.get_width() < self.width and y - rotatedVehicleImage.get_height() < self.height
-                ):
-                    surfaceCopy.blit(rotatedVehicleImage, ( x, y ))
+                if not vehicle.finished:
+                    rotatedVehicleImage = pygame.transform.rotate(self.camera.vehicleImageCache[vehicle.id], math.degrees(vehicle.angle))
+                    x = math.floor((vehicle.x / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_width() / 2 - (self.camera.x - self.width / 2))
+                    y = math.floor((vehicle.y / (Config.TILE_SPRITE_SIZE / self.tileSize)) - rotatedVehicleImage.get_height() / 2 - (self.camera.y - self.height / 2))
+                    if (
+                        x + rotatedVehicleImage.get_width() >= 0 and y + rotatedVehicleImage.get_height() >= 0 and
+                        x - rotatedVehicleImage.get_width() < self.width and y - rotatedVehicleImage.get_height() < self.height
+                    ):
+                        surfaceCopy.blit(rotatedVehicleImage, ( x, y ))
 
             # Draw surface
             surface.blit(surfaceCopy, ( self.x, self.y ))
@@ -341,18 +342,19 @@ class CountdownClock:
         self.tickSize = width // Config.COUNTDOWN_CLOCK_TICKS - self.tickPadding * 2
 
         self.ended = False
+        self.hidden = False
         self.tick = 0
         self.tickTime = self.game.time
 
     # Update the countdown clock widget
     def update(self, delta):
-        # Only draw the clock when not ended
-        if not self.ended:
+        # Only draw the clock when not hidden
+        if not self.hidden:
             # When the tick time passed
             if self.game.time - self.tickTime > Config.COUNTDOWN_CLOCK_TICK_TIME:
                 # Stop the clock
                 if self.tick == Config.COUNTDOWN_CLOCK_TICKS:
-                    self.ended = True
+                    self.hidden = True
                     return
 
                 # Go to the next tick
@@ -361,6 +363,7 @@ class CountdownClock:
 
                 # When the final tick has been reached stop and play sound
                 if self.tick == Config.COUNTDOWN_CLOCK_TICKS:
+                    self.ended = True
                     if self.game.settings['sound-effects']['enabled']:
                         self.game.tockSound.play()
                 else:
@@ -369,8 +372,8 @@ class CountdownClock:
 
     # Draw the countdown clock widget
     def draw(self, surface):
-        # Only draw the clock when not ended
-        if not self.ended:
+        # Only draw the clock when not hidden
+        if not self.hidden:
             # Draw dark frame
             pygame.draw.rect(surface, Color.DARK, ( self.x, self.y, self.width, self.height))
 
@@ -655,14 +658,17 @@ class VehicleViewport:
         self.speedLabel = Label(self.game, 'Speed: %3d km/h' % (vehicle.velocity / Config.PIXELS_PER_METER * 3.6), 24, height - 24 - 24, width - 24 - 24, 24, game.textFont, Color.BLACK, TextAlign.LEFT)
         self.widgets.append(self.speedLabel)
 
-        # Check if the car is already started
+        # Check if the vehicle is already started
         if not self.vehicle.started:
             tickSize = self.width // 8
             self.countdownClock = CountdownClock(self.game, (width - Config.COUNTDOWN_CLOCK_TICKS * tickSize) // 2, ((height - 256) - tickSize) // 2, Config.COUNTDOWN_CLOCK_TICKS * tickSize, tickSize)
             self.widgets.append(self.countdownClock)
+        else:
+            self.countdownClock = None
 
         # Create finish label but hide it
         self.finishLabel = Label(self.game, 'Finished!', 0, 0, width, height - 128, game.titleFont, Color.BLACK, TextAlign.CENTER)
+        self.finishTimeLabel = Label(self.game, '', 0, 64, width, height - 64, game.textFont, Color.BLACK, TextAlign.CENTER)
 
     # Handle vehicle viewport events
     def handle_event(self, event):
@@ -711,13 +717,16 @@ class VehicleViewport:
     # Update the vehicle viewport
     def update(self, delta):
         # Update countdown clock if vehicle is not started
-        if not self.vehicle.started:
+        if self.countdownClock != None and not self.countdownClock.hidden:
             self.countdownClock.update(delta)
 
         # When vehicle is finished display finished lap
         if self.vehicle.finished:
             if self.finishLabel not in self.widgets:
                 self.widgets.append(self.finishLabel)
+            if self.finishTimeLabel not in self.widgets:
+                self.finishTimeLabel.set_text("Time: " + formatTime(self.vehicle.finishTime - self.vehicle.startTime))
+                self.widgets.append(self.finishTimeLabel)
 
     # Draw the vehicle viewport
     def draw(self, surface):
@@ -736,7 +745,9 @@ class VehicleViewport:
             vehicle.draw(self.surface, self.camera)
 
         # Update time label
-        if self.vehicle.finishTime != None and self.game.time - self.vehicle.finishTime < Config.FINISH_LAP_TIME_TIMEOUT:
+        if self.vehicle.finished:
+            time = self.vehicle.finishTime - self.vehicle.startTime
+        elif self.vehicle.finishTime != None and self.game.time - self.vehicle.finishTime < Config.FINISH_LAP_TIME_TIMEOUT:
             time = self.vehicle.lapTimes[self.vehicle.lap - 1]
         else:
             time = 0 if self.vehicle.startTime == None else self.game.time - self.vehicle.startTime
