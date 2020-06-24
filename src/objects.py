@@ -74,11 +74,19 @@ class Vehicle:
 
         self.started = False
         self.startTime = None
+
         self.finished = False
         self.finishTime = None
-        self.crashTime = None
-        self.lastCheckpoint = self.map.finish
+
         self.crashed = False
+        self.crashTime = None
+
+        self.lastCheckpoint = self.map.finish
+
+        if self.map.finish['width'] >= self.map.finish['height']:
+            self.lastCheckpointDirection = Direction.BOTTOM_TO_TOP
+        else:
+            self.lastCheckpointDirection = Direction.RIGHT_TO_LEFT
 
         self.x = x
         self.y = y
@@ -120,22 +128,43 @@ class Vehicle:
                 self.crashTime = None
 
                 # Teleport back to last checkpoint
-                if self.lastCheckpoint['height'] > self.lastCheckpoint['width']:
-                    self.x = (self.lastCheckpoint['x'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                if self.lastCheckpointDirection == Direction.TOP_TO_BOTTOM:
                     if self.id == VehicleId.LEFT:
-                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                        self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     if self.id == VehicleId.RIGHT:
-                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
-                    self.angle = math.radians(270)
+                        self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.y = (self.lastCheckpoint['y'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.angle = math.radians(180)
                     self.velocity = 0
                     self.acceleration = 0
-                else:
+
+                if self.lastCheckpointDirection == Direction.BOTTOM_TO_TOP:
                     if self.id == VehicleId.LEFT:
                         self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     if self.id == VehicleId.RIGHT:
                         self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height']) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
                     self.angle = 0
+                    self.velocity = 0
+                    self.acceleration = 0
+
+                if self.lastCheckpointDirection == Direction.LEFT_TO_RIGHT:
+                    self.x = (self.lastCheckpoint['x'] + self.lastCheckpoint['width']) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == VehicleId.LEFT:
+                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == VehicleId.RIGHT:
+                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.angle = math.radians(90)
+                    self.velocity = 0
+                    self.acceleration = 0
+
+                if self.lastCheckpointDirection == Direction.RIGHT_TO_LEFT:
+                    self.x = (self.lastCheckpoint['x'] - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == VehicleId.LEFT:
+                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2 - 1) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    if self.id == VehicleId.RIGHT:
+                        self.y = (self.lastCheckpoint['y'] + self.lastCheckpoint['height'] // 2) * Config.TILE_SPRITE_SIZE + Config.TILE_SPRITE_SIZE / 2
+                    self.angle = math.radians(270)
                     self.velocity = 0
                     self.acceleration = 0
 
@@ -200,6 +229,11 @@ class Vehicle:
             if self.map.track[tile['y']][tile['x']] == 2:
                 self.lastCheckpoint = self.map.finish
 
+                if self.map.finish['width'] >= self.map.finish['height']:
+                    self.lastCheckpointDirection = Direction.BOTTOM_TO_TOP
+                else:
+                    self.lastCheckpointDirection = Direction.RIGHT_TO_LEFT
+
                 # Check if all checkpoints are checked
                 allChecked = True
                 for checked in self.checkedCheckpoints:
@@ -231,7 +265,32 @@ class Vehicle:
                         tile['x'] >= checkpoint['x'] and tile['y'] >= checkpoint['y'] and
                         tile['x'] < checkpoint['x'] + checkpoint['width'] and tile['y'] < checkpoint['y'] + checkpoint['height']
                     ):
-                        self.lastCheckpoint = checkpoint
+                        # Update checkpoint
+                        if checkpoint != self.lastCheckpoint:
+                            self.lastCheckpoint = checkpoint
+
+                            # When entered at the top half and vertical
+                            checkpointRect = {
+                                'x': checkpoint['x'] * camera.tileSize,
+                                'y': checkpoint['y'] * camera.tileSize,
+                                'width':checkpoint['width'] * camera.tileSize,
+                                'height': checkpoint['height'] * camera.tileSize
+                            }
+
+                            if self.y <= checkpointRect['y'] + checkpointRect['height'] / 2 and checkpoint['width'] >= checkpoint['height']:
+                                self.lastCheckpointDirection = Direction.TOP_TO_BOTTOM
+
+                            # When entered at the bottom half and vertical
+                            elif self.y > checkpointRect['y'] + checkpointRect['height'] / 2 and checkpoint['width'] >= checkpoint['height']:
+                                self.lastCheckpointDirection = Direction.BOTTOM_TO_TOP
+
+                            # When entered at the left half and horizontal
+                            elif self.x <= checkpointRect['x'] + checkpointRect['width'] / 2 and checkpoint['width'] < checkpoint['height']:
+                                self.lastCheckpointDirection = Direction.RIGHT_TO_LEFT
+
+                            # When entered at the right half and horizontal
+                            elif self.x > checkpointRect['x'] + checkpointRect['width'] / 2 and checkpoint['width'] < checkpoint['height']:
+                                self.lastCheckpointDirection = Direction.LEFT_TO_RIGHT
 
                         # Check checkpoint if not already checked
                         if not self.checkedCheckpoints[i]:

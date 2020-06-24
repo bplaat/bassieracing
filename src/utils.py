@@ -12,4 +12,17 @@ def formatTime(time):
 def checkVersion(version):
     otherVersionParts = [ int(part) for part in version.split('.') ]
     gameVersionParts = [ int(part) for part in Config.VERSION.split('.') ]
-    return otherVersionParts[0] > gameVersionParts[0] or otherVersionParts[1] > gameVersionParts[1] or otherVersionParts[2] > gameVersionParts[2]
+
+    if version == Config.VERSION:
+        return False
+
+    if otherVersionParts[0] < gameVersionParts[0]:
+        return False
+
+    if otherVersionParts[1] < gameVersionParts[1]:
+        return False
+
+    if otherVersionParts[2] < gameVersionParts[2]:
+        return False
+
+    return True

@@ -68,6 +68,7 @@ class Game:
         if os.path.isfile('settings.json'):
             with open('settings.json', 'r') as file:
                 self.settings = json.load(file)
+                self.settings['version'] = Config.VERSION
         else:
             self.settings = {
                 'type': 'BassieRacing Settings',
