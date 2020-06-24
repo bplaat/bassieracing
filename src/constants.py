@@ -4,7 +4,7 @@
 class Config:
     # App constants
     NAME = 'BassieRacing'
-    VERSION = '1.2.0'
+    VERSION = '1.1.0'
     GIT_REPO_URL = 'https://github.com/bplaat/bassieracing'
 
     # Window constants

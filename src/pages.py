@@ -155,8 +155,7 @@ class MenuPage(Page):
 
     # Exit button clicked
     def exit_button_clicked(self):
-        self.game.save_settings()
-        self.game.running = False
+        self.game.page = ExitPage(self.game)
 
     # Footer label clicked
     def footer_label_clicked(self):
@@ -363,7 +362,7 @@ class GamePage(Page):
 
     # Back button clicked
     def back_button_clicked(self):
-        self.game.page = MenuPage(self.game)
+        self.game.page = PlayPage(self.game)
 
     # Update game page
     def update(self, delta):
@@ -829,4 +828,31 @@ class SettingsPage(Page):
 
     # Back button clicked event
     def back_button_clicked(self):
+        self.game.page = MenuPage(self.game)
+
+# The exit page class
+class ExitPage(Page):
+    # Create exit page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+    # Create exit page widgets
+    def create_widgets(self):
+        y = (self.game.height - (72 + 24 + 32 + 8 + 32 + 32 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Are you sure to exit?', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 24
+        self.widgets.append(Label(self.game, 'All your settings and high scores', 0, y, self.game.width, 32, self.game.textFont, Color.WHITE))
+        y += 32 + 8
+        self.widgets.append(Label(self.game, 'will be saved when you exit', 0, y, self.game.width, 32, self.game.textFont, Color.WHITE))
+        y += 32 + 32
+        self.widgets.append(Button(self.game, 'Yes', self.game.width // 4, y, self.game.width // 4 - 8, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.yes_button_clicked))
+        self.widgets.append(Button(self.game, 'No', self.game.width // 2 + 16, y, self.game.width // 4 - 8, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.no_button_clicked))
+
+    # Yes button clicked
+    def yes_button_clicked(self):
+        self.game.save_settings()
+        self.game.running = False
+
+    # No button clicked
+    def no_button_clicked(self):
         self.game.page = MenuPage(self.game)
