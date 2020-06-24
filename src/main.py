@@ -71,6 +71,7 @@ class Game:
         else:
             self.settings = {
                 'type': 'BassieRacing Settings',
+                'version': Config.VERSION,
                 'intro': {
                     'enabled': True
                 },
@@ -81,9 +82,21 @@ class Game:
                 'sound-effects': {
                     'enabled': True
                 },
+                'selected': {
+                    'map-id': None,
+                    'left': {
+                        'vehicle-id': 0,
+                        'vehicle-color': VehicleColor.BLUE
+                    },
+                    'right': {
+                        'vehicle-id': 0,
+                        'vehicle-color': VehicleColor.RED
+                    }
+                },
                 'high-scores': [],
                 'custom-maps': []
             }
+            self.save_settings()
         self.musicStart = self.settings['music']['position']
 
         # Create hidden Tkinter window for file dialogs and error messages

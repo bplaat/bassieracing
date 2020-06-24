@@ -204,21 +204,21 @@ class SelectMapPage(Page):
     # Create select map page
     def __init__(self, game, gamemode):
         self.gamemode = gamemode
-        self.selectedMapIndex = None
         Page.__init__(self, game)
 
     # Create select map page widgets
     def create_widgets(self):
         self.widgets.append(Label(self.game, 'Select a map to race', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
-        self.mapSelector = MapSelector(self.game, 16, 24 + 72 + 16, self.game.width - 16 - 16, self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.selectedMapIndex, self.map_selector_changed)
+        self.mapSelector = MapSelector(self.game, 16, 24 + 72 + 16, self.game.width - 16 - 16, self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.game.settings['selected']['map-id'], self.map_selector_changed)
         self.widgets.append(self.mapSelector)
         self.widgets.append(Button(self.game, 'Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button(self.game, 'Load custom map', (self.game.width - 420) // 2, self.game.height - 64 - 16, 420, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.load_button_clicked))
         self.widgets.append(Button(self.game, 'Continue', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
     # Map selector changed
-    def map_selector_changed(self, selectedMapIndex):
-        self.selectedMapIndex = selectedMapIndex
+    def map_selector_changed(self, selectedMap):
+        self.game.settings['selected']['map-id'] = selectedMap.id
+        self.game.save_settings()
 
     # Back button clicked
     def back_button_clicked(self):
@@ -241,38 +241,36 @@ class SelectVehiclePage(Page):
     def __init__(self, game, gamemode, map):
         self.gamemode = gamemode
         self.map = map
-        self.leftSelectedVehicleIndex = None
-        self.leftSelectedVehicleColor = VehicleColor.BLUE
-        self.rightSelectedVehicleIndex = None
-        self.rightSelectedVehicleColor = VehicleColor.RED
         Page.__init__(self, game)
 
     # Create select vehicle page widgets
     def create_widgets(self):
         if self.gamemode == GameMode.SINGLE_PLAYER:
             self.widgets.append(Label(self.game, 'Select a vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
-            self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.leftSelectedVehicleIndex, self.leftSelectedVehicleColor, self.left_vehicle_selector_changed)
+            self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.game.settings['selected']['left']['vehicle-id'], self.game.settings['selected']['left']['vehicle-color'], self.left_vehicle_selector_changed)
             self.widgets.append(self.leftVehicleSelector)
 
         if self.gamemode == GameMode.SPLIT_SCREEN:
             self.widgets.append(Label(self.game, 'Select both a vehicle', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
-            self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.leftSelectedVehicleIndex, self.leftSelectedVehicleColor, self.left_vehicle_selector_changed)
+            self.leftVehicleSelector = VehicleSelector(self.game, 16, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.game.settings['selected']['left']['vehicle-id'], self.game.settings['selected']['left']['vehicle-color'], self.left_vehicle_selector_changed)
             self.widgets.append(self.leftVehicleSelector)
-            self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.rightSelectedVehicleIndex, self.rightSelectedVehicleColor, self.right_vehicle_selector_changed)
+            self.rightVehicleSelector = VehicleSelector(self.game, 16 + self.game.width // 2, 24 + 72 + 16, self.game.width // 2 - (16 + 16), self.game.height - (24 + 72 + 16) - (48 + 64 + 16), self.game.settings['selected']['right']['vehicle-id'], self.game.settings['selected']['right']['vehicle-color'], self.right_vehicle_selector_changed)
             self.widgets.append(self.rightVehicleSelector)
 
         self.widgets.append(Button(self.game, 'Back', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
         self.widgets.append(Button(self.game, 'Race!', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
 
     # Left vehicle selector changed
-    def left_vehicle_selector_changed(self, selectedVehicleIndex, selectedVehicleColor):
-        self.leftSelectedVehicleIndex = selectedVehicleIndex
-        self.leftSelectedVehicleColor = selectedVehicleColor
+    def left_vehicle_selector_changed(self, selectedVehicle, selectedVehicleColor):
+        self.game.settings['selected']['left']['vehicle-id'] = selectedVehicle['id']
+        self.game.settings['selected']['left']['vehicle-color'] = selectedVehicleColor
+        self.game.save_settings()
 
     # Right vehicle selector changed
-    def right_vehicle_selector_changed(self, selectedVehicleIndex, selectedVehicleColor):
-        self.rightSelectedVehicleIndex = selectedVehicleIndex
-        self.rightSelectedVehicleColor = selectedVehicleColor
+    def right_vehicle_selector_changed(self, selectedVehicle, selectedVehicleColor):
+        self.game.settings['selected']['right']['vehicle-id'] = selectedVehicle['id']
+        self.game.settings['selected']['right']['vehicle-color'] = selectedVehicleColor
+        self.game.save_settings()
 
     # Back button clicked
     def back_button_clicked(self):
@@ -284,18 +282,18 @@ class SelectVehiclePage(Page):
             self.game.page = GamePage(self.game, self.gamemode, self.map, [
                 {
                     'type': self.leftVehicleSelector.selectedVehicle,
-                    'color': self.leftSelectedVehicleColor
+                    'color': self.game.settings['selected']['left']['vehicle-color']
                 }
             ])
         if self.gamemode == GameMode.SPLIT_SCREEN:
             self.game.page = GamePage(self.game, self.gamemode, self.map, [
                 {
                     'type': self.leftVehicleSelector.selectedVehicle,
-                    'color': self.leftSelectedVehicleColor
+                    'color': self.game.settings['selected']['left']['vehicle-color']
                 },
                 {
                     'type': self.rightVehicleSelector.selectedVehicle,
-                    'color': self.rightSelectedVehicleColor
+                    'color': self.game.settings['selected']['right']['vehicle-color']
                 }
             ])
 

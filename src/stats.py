@@ -7,6 +7,7 @@ import math
 vehicles = [
     # Speedy Car (Car 1)
     {
+        'id': 0,
         'name': 'Speedy Car',
         'colors': [
             # Blue
@@ -46,6 +47,7 @@ vehicles = [
 
     # CyberTruck (Car 4)
     {
+        'id': 1,
         'name': 'CyberTruck',
         'colors': [
             # Blue
@@ -85,6 +87,7 @@ vehicles = [
 
     # Fire Car (Car 3)
     {
+        'id': 2,
         'name': 'Fire Car',
         'colors': [
             # Blue
@@ -124,6 +127,7 @@ vehicles = [
 
     # Torchcycle (Motorcycle)
     {
+        'id': 3,
         'name': 'Torchcycle',
         'colors': [
             # Blue
@@ -163,6 +167,7 @@ vehicles = [
 
     # MemeRacer (Car 2)
     {
+        'id': 4,
         'name': 'MemeRacer',
         'colors': [
             # Blue
@@ -202,6 +207,7 @@ vehicles = [
 
     # Deluxe 3000 (Car 5)
     {
+        'id': 5,
         'name': 'Deluxe 3000',
         'colors': [
             # Blue

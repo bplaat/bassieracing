@@ -10,6 +10,6 @@ def formatTime(time):
 
 # Check if other version is newer
 def checkVersion(version):
-    otherVersionParts = version.split('.')
-    gameVersionParts = Config.VERSION.split('.')
+    otherVersionParts = [ int(part) for part in version.split('.') ]
+    gameVersionParts = [ int(part) for part in Config.VERSION.split('.') ]
     return otherVersionParts[0] > gameVersionParts[0] or otherVersionParts[1] > gameVersionParts[1] or otherVersionParts[2] > gameVersionParts[2]

@@ -1,7 +1,7 @@
 VERSION="1.0.1"
 
 # To build a release build for Windows you need also: pyintallar, upx,
-# ImageMagick and 7zip install and accesable via the path
+# ImageMagick and 7zip install and accessible via the users or systems path
 if [ "$1" == "release" ]; then
     # Remove old dist folder
     rm -r dist
@@ -30,7 +30,15 @@ if [ "$1" == "release" ]; then
 
     rm icon.ico
 
+# To render a class diagram you need pyreverse (pylint) and graphviz
+# installed and accessible via the users or systems path
+elif [ "$1" == "render" ]; then
+    pyreverse -o pdf -p bassieracing $(find src -name *.py)
+    mv classes_bassieracing.pdf docs/class-diagram.pdf
+    rm packages_bassieracing.pdf
+
 # When no release just run the python file
 else
+    # Change this line to "python3 src/main.py" on Ubuntu 18.04 or lower!
     python src/main.py
 fi
