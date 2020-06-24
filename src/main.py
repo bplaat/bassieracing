@@ -28,15 +28,15 @@ class Game:
         self.running = True
 
         # Init the window
-        pygame.display.set_caption('BassieRacing')
-        self.iconImage = pygame.image.load('assets/images/icon.png')
-        pygame.display.set_icon(self.iconImage)
         self.width = Config.WIDTH
         self.height = Config.HEIGHT
-        self.fullscreen = False
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         self.screen = pygame.display.set_mode(( self.width, self.height ), pygame.DOUBLEBUF | pygame.RESIZABLE)
         del os.environ['SDL_VIDEO_CENTERED']
+
+        pygame.display.set_caption('BassieRacing')
+        self.iconImage = pygame.image.load('assets/images/icon.png')
+        pygame.display.set_icon(self.iconImage)
 
         # Load settings
         if os.path.isfile('settings.json'):

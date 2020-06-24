@@ -405,7 +405,6 @@ class MapSelector(WidgetGroup):
                     self.mapPaths.append(customMapPath)
                 else:
                     game.settings['custom-maps'].remove(customMapPath)
-        game.save_settings()
 
         # Load maps
         self.maps = []
@@ -506,7 +505,6 @@ class MapSelector(WidgetGroup):
                 self.mapPaths.append(file_path)
                 if file_path not in self.game.settings['custom-maps']:
                     self.game.settings['custom-maps'].append(file_path)
-                    self.game.save_settings()
                 self.maps.append(map)
                 self.set_selected(len(self.maps) - 1)
 

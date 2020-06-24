@@ -84,7 +84,6 @@ class IntroPage(Page):
 
         if event.type == pygame.MOUSEBUTTONUP:
             self.introSoundChannel.set_endevent()
-            self.introSoundChannel.fadeout(250)
             if self.game.settings['sound-effects']['enabled']:
                 self.game.clickSound.play()
             self.game.page = MenuPage(self.game)
@@ -92,7 +91,6 @@ class IntroPage(Page):
 
         if event.type == pygame.KEYUP and event.key == pygame.K_ESCAPE:
             self.introSoundChannel.set_endevent()
-            self.introSoundChannel.fadeout(250)
             self.game.page = MenuPage(self.game)
 
         if event.type == pygame.USEREVENT + 2:
@@ -218,7 +216,6 @@ class SelectMapPage(Page):
     # Map selector changed
     def map_selector_changed(self, selectedMap):
         self.game.settings['selected']['map-id'] = selectedMap.id
-        self.game.save_settings()
 
     # Back button clicked
     def back_button_clicked(self):
@@ -264,13 +261,11 @@ class SelectVehiclePage(Page):
     def left_vehicle_selector_changed(self, selectedVehicle, selectedVehicleColor):
         self.game.settings['selected']['left']['vehicle-id'] = selectedVehicle['id']
         self.game.settings['selected']['left']['vehicle-color'] = selectedVehicleColor
-        self.game.save_settings()
 
     # Right vehicle selector changed
     def right_vehicle_selector_changed(self, selectedVehicle, selectedVehicleColor):
         self.game.settings['selected']['right']['vehicle-id'] = selectedVehicle['id']
         self.game.settings['selected']['right']['vehicle-color'] = selectedVehicleColor
-        self.game.save_settings()
 
     # Back button clicked
     def back_button_clicked(self):
@@ -429,8 +424,6 @@ class StatsPage(Page):
                 'map-id': map.id,
                 'time': round(fastestTime, 3)
             })
-
-        game.save_settings()
 
         Page.__init__(self, game)
 
@@ -596,7 +589,6 @@ class EditorPage(Page):
                         game.settings['map-editor']['laps'] = len(Config.MAP_LAPS)
             else:
                 game.settings['map-editor']['last-path'] = None
-                game.save_settings()
 
         if not loaded:
             pygame.display.set_caption('Unsaved - BassieRacing')
@@ -662,7 +654,6 @@ class EditorPage(Page):
     # New button clicked
     def new_button_clicked(self):
         self.game.settings['map-editor']['last-path'] = None
-        self.game.save_settings()
 
         pygame.display.set_caption('Unsaved - BassieRacing')
 
@@ -677,7 +668,6 @@ class EditorPage(Page):
         file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to open...', filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path:
             self.game.settings['map-editor']['last-path'] = file_path
-            self.game.save_settings()
 
             pygame.display.set_caption(file_path + ' - BassieRacing')
             self.game.focus()
@@ -693,13 +683,11 @@ class EditorPage(Page):
                     if size == self.map.width:
                         foundSize = True
                         self.game.settings['map-editor']['size'] = i
-                        self.game.save_settings()
                         self.sizeComboBox.set_selected(i, True)
                         break
 
                 if not foundSize:
                     self.game.settings['map-editor']['size'] = len(Config.MAP_SIZES)
-                    self.game.save_settings()
                     self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
 
                 # Select the right laps amount
@@ -708,13 +696,11 @@ class EditorPage(Page):
                     if laps == self.map.laps:
                         foundLaps = True
                         self.game.settings['map-editor']['laps'] = i
-                        self.game.save_settings()
                         self.lapsComboBox.set_selected(i)
                         break
 
                 if not foundLaps:
                     self.game.settings['map-editor']['laps'] = len(Config.MAP_LAPS)
-                    self.game.save_settings()
                     self.lapsComboBox.set_text('Laps: %d \u25BC' % (self.map.laps))
 
     # Save button clicked
@@ -723,7 +709,6 @@ class EditorPage(Page):
             file_path = tkinter.filedialog.asksaveasfilename(title='Select a location to save the BassieRacing Map...', filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
             if file_path:
                 self.game.settings['map-editor']['last-path'] = file_path
-                self.game.save_settings()
 
                 pygame.display.set_caption(file_path + ' - BassieRacing')
                 self.game.focus()
@@ -737,7 +722,6 @@ class EditorPage(Page):
     # Grid toggle button changed
     def grid_togglebutton_changed(self, active):
         self.game.settings['map-editor']['grid'] = active
-        self.game.save_settings()
         self.mapEditor.grid = active
         self.mapEditor.camera.grid = active
 
@@ -749,7 +733,6 @@ class EditorPage(Page):
     # Size combo box changed
     def size_combo_box_changed(self, selectedOptionIndex):
         self.game.settings['map-editor']['size'] = selectedOptionIndex
-        self.game.save_settings()
         for i, size in enumerate(Config.MAP_SIZES):
             if i == selectedOptionIndex:
                 self.map.resize(size, size)
@@ -759,13 +742,11 @@ class EditorPage(Page):
     # Laps combo box changed
     def laps_combo_box_changed(self, selectedOptionIndex):
         self.game.settings['map-editor']['laps'] = selectedOptionIndex
-        self.game.save_settings()
         self.map.laps = Config.MAP_LAPS[selectedOptionIndex]
 
     # Brush combo box changed
     def brush_combo_box_changed(self, selectedOptionIndex):
         self.game.settings['map-editor']['brush'] = selectedOptionIndex
-        self.game.save_settings()
         self.mapEditor.tool = selectedOptionIndex
 
 # The help page class
@@ -821,12 +802,10 @@ class SettingsPage(Page):
     # Intro toggle button changed
     def intro_toggle_button_changed(self, active):
         self.game.settings['intro']['enabled'] = active
-        self.game.save_settings()
 
     # Music toggle button changed
     def music_toggle_button_changed(self, active):
         self.game.settings['music']['enabled'] = active
-        self.game.save_settings()
 
         if active:
             if not pygame.mixer.music.get_busy():
@@ -839,17 +818,14 @@ class SettingsPage(Page):
     # Sound effects toggle button changed
     def sound_effects_toggle_button_changed(self, active):
         self.game.settings['sound-effects']['enabled'] = active
-        self.game.save_settings()
 
     # Reset high scores button clicked
     def reset_high_scores_button_clicked(self):
         self.game.settings['high-scores'] = []
-        self.game.save_settings()
 
     # Clear custom maps cache button clicked
     def clear_custom_maps_cache_button_clicked(self):
         self.game.settings['custom-maps'] = []
-        self.game.save_settings()
 
     # Back button clicked event
     def back_button_clicked(self):
