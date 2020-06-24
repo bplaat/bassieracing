@@ -113,7 +113,7 @@ class ToggleButton(Button):
         Button.__init__(self, game, labels[int(active)], x, y, width, height, font, color, backgroundColor, self.button_clicked)
 
         self.labels = labels
-        self.active = False
+        self.active = active
         self.blurBackgroundColor = backgroundColor
         self.activeBackgroundColor = activeBackgroundColor
         if active:
@@ -170,8 +170,8 @@ class ComboBox(Button):
             ry += height
 
     # Set selected option
-    def set_selected(self, selectedOptionIndex):
-        if selectedOptionIndex != self.selectedOptionIndex:
+    def set_selected(self, selectedOptionIndex, force = False):
+        if force or selectedOptionIndex != self.selectedOptionIndex:
             self.selectedOptionIndex = selectedOptionIndex
             self.selectedOption = self.options[selectedOptionIndex]
             self.set_text(self.options[selectedOptionIndex] + ' \u25BC')
@@ -788,38 +788,38 @@ class MapEditor(WidgetGroup):
         )
 
     # Use tool
-    def use_tool(self, mouse):
+    def use_tool(self, tool, mouse):
         tile = {
             'x': math.floor((mouse['x'] + self.camera.x - self.width / 2) / Config.EDITOR_TILE_SIZE),
             'y': math.floor((mouse['y'] + self.camera.y - self.height / 2) / Config.EDITOR_TILE_SIZE)
         }
 
         if tile['x'] >= 0 and tile['y'] >= 0 and tile['x'] < self.map.width and tile['y'] < self.map.height:
-            if self.tool == MapEditor.GRASS_BRUSH:
+            if tool == MapEditor.GRASS_BRUSH:
                 self.map.terrain[tile['y']][tile['x']] = 0
                 self.map.blend_terrain()
 
-            if self.tool == MapEditor.DIRT_BRUSH:
+            if tool == MapEditor.DIRT_BRUSH:
                 self.map.terrain[tile['y']][tile['x']] = 1
                 self.map.blend_terrain()
 
-            if self.tool == MapEditor.SAND_BRUSH:
+            if tool == MapEditor.SAND_BRUSH:
                 self.map.terrain[tile['y']][tile['x']] = 2
                 self.map.blend_terrain()
 
-            if self.tool == MapEditor.ASPHALT_BRUSH:
+            if tool == MapEditor.ASPHALT_BRUSH:
                 self.map.track[tile['y']][tile['x']] = 1
                 self.map.blend_track(False)
 
-            if self.tool == MapEditor.FINISH_BRUSH:
+            if tool == MapEditor.FINISH_BRUSH:
                 self.map.track[tile['y']][tile['x']] = 2
                 self.map.blend_track(False)
 
-            if self.tool == MapEditor.CHECKPOINT_BRUSH:
+            if tool == MapEditor.CHECKPOINT_BRUSH:
                 self.map.track[tile['y']][tile['x']] = 3
                 self.map.blend_track(False)
 
-            if self.tool == MapEditor.TRACK_ERASER:
+            if tool == MapEditor.TRACK_ERASER:
                 self.map.track[tile['y']][tile['x']] = 0
                 self.map.blend_track(False)
 
@@ -827,8 +827,19 @@ class MapEditor(WidgetGroup):
     def handle_event(self, event):
         # Handle mousedown events
         if event.type == pygame.MOUSEBUTTONDOWN:
-            self.mouseDown = True
-            self.use_tool({ 'x': event.pos[0], 'y': event.pos[1] })
+            mouse = {
+                'x': event.pos[0],
+                'y': event.pos[1]
+            }
+
+            if event.button == 1:
+                self.mouseDown = True
+                self.use_tool(self.tool, mouse)
+
+            if event.button == 3:
+                self.mouseDown = True
+                self.use_tool(MapEditor.TRACK_ERASER, mouse)
+
             return True
 
         # Handle mousemove events
@@ -839,7 +850,11 @@ class MapEditor(WidgetGroup):
             }
 
             if self.mouseDown:
-                self.use_tool(mouse)
+                if event.buttons[0]:
+                    self.use_tool(self.tool, mouse)
+
+                if event.buttons[2]:
+                    self.use_tool(MapEditor.TRACK_ERASER, mouse)
             else:
                 self.camera.movingUp = mouse['y'] >= 2 and mouse['y'] < Config.EDITOR_CAMERA_BORDER
                 self.camera.movingDown = mouse['y'] >= self.game.height - Config.EDITOR_CAMERA_BORDER and mouse['y'] < self.game.height - 2
@@ -850,7 +865,8 @@ class MapEditor(WidgetGroup):
 
         # Handle mouseup events
         if event.type == pygame.MOUSEBUTTONUP:
-            self.mouseDown = False
+            if event.button == 1 or event.button == 3:
+                self.mouseDown = False
             return True
 
         # Handle keydown events

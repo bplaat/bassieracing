@@ -562,32 +562,79 @@ class MultiplayerPage(Page):
 class EditorPage(Page):
     # Create edit page
     def __init__(self, game):
-        self.file_path = None
-        pygame.display.set_caption('Unsaved - BassieRacing')
-        self.map = Map.generate_map(game, 32, 32)
-        self.grid = False
-        self.mapCamera = { 'x': None, 'y': None }
-        self.selectedSizeIndex = 1
-        self.selectedBrushIndex = 3
+        loaded = False
+
+        # Open last opend path
+        if game.settings['map-editor']['last-path'] != None:
+            if os.path.isfile(game.settings['map-editor']['last-path']):
+                loaded = True
+                pygame.display.set_caption(game.settings['map-editor']['last-path'] + ' - BassieRacing')
+
+                self.map = Map.load_from_file(game.settings['map-editor']['last-path'])
+                self.mapCamera = { 'x': None, 'y': None }
+                if self.map != None:
+                    # Select the right size amount
+                    foundSize = False
+                    for i, size in enumerate(Config.MAP_SIZES):
+                        if size == self.map.width:
+                            foundSize = True
+                            game.settings['map-editor']['size'] = i
+                            break
+
+                    if not foundSize:
+                        game.settings['map-editor']['size'] = len(Config.MAP_SIZES)
+
+                    # Select the right laps amount
+                    foundLaps = False
+                    for i, laps in enumerate(Config.MAP_LAPS):
+                        if laps == self.map.laps:
+                            foundLaps = True
+                            game.settings['map-editor']['laps'] = i
+                            break
+
+                    if not foundLaps:
+                        game.settings['map-editor']['laps'] = len(Config.MAP_LAPS)
+            else:
+                game.settings['map-editor']['last-path'] = None
+                game.save_settings()
+
+        if not loaded:
+            pygame.display.set_caption('Unsaved - BassieRacing')
+            size = Config.MAP_SIZES[game.settings['map-editor']['size']]
+            self.map = Map.generate_map(game, size, size)
+            self.mapCamera = { 'x': None, 'y': None }
+
+            if game.settings['map-editor']['size'] == len(Config.MAP_SIZES):
+                game.settings['map-editor']['size'] = 1
+
+            if game.settings['map-editor']['laps'] == len(Config.MAP_LAPS):
+                game.settings['map-editor']['laps'] = 2
+
         Page.__init__(self, game, Color.DARK)
 
     # Create edit page widgets
     def create_widgets(self):
-        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, self.selectedBrushIndex, self.grid, self.mapCamera)
+        self.mapEditor = MapEditor(self.game, self.map, 0, 0, self.game.width, self.game.height, self.game.settings['map-editor']['brush'], self.game.settings['map-editor']['grid'], self.mapCamera)
         self.widgets.append(self.mapEditor)
 
         self.widgets.append(Button(self.game, 'New', 16, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.new_button_clicked))
         self.widgets.append(Button(self.game, 'Open', 16 + (128 + 16), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.open_button_clicked))
         self.widgets.append(Button(self.game, 'Save', 16 + (128 + 16) * 2, 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.save_button_clicked))
-        self.widgets.append(ToggleButton(self.game, [ 'Grid off', 'Grid on' ], self.grid, 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
+        self.widgets.append(ToggleButton(self.game, [ 'Grid off', 'Grid on' ], self.game.settings['map-editor']['grid'], 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
         self.widgets.append(Button(self.game, 'Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
         self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ],
-            0 if self.selectedSizeIndex == len(Config.MAP_SIZES) else self.selectedSizeIndex, 16, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
-        if self.selectedSizeIndex == len(Config.MAP_SIZES):
+            0 if self.game.settings['map-editor']['size'] == len(Config.MAP_SIZES) else self.game.settings['map-editor']['size'], 16, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
+        if self.game.settings['map-editor']['size'] == len(Config.MAP_SIZES):
             self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
         self.widgets.append(self.sizeComboBox)
-        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, self.selectedBrushIndex, self.game.width // 2 + 8, self.game.height - 64 - 16, (self.game.width - 16 * 3) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
+
+        self.lapsComboBox = ComboBox(self.game, [ 'Laps: %d' % (laps) for laps in Config.MAP_LAPS ], self.game.settings['map-editor']['laps'], 16 + (self.game.width - 16 * 4) // 3 + 16, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.laps_combo_box_changed)
+        if self.game.settings['map-editor']['laps'] == len(Config.MAP_LAPS):
+            self.sizeComboBox.set_text('Laps: %d \u25BC' % (self.game.settings['map-editor']['laps']))
+        self.widgets.append(self.lapsComboBox)
+
+        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, self.game.settings['map-editor']['brush'], 16 + ((self.game.width - 16 * 4) // 3) * 2 + 16 * 2, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
         self.widgets.append(self.brushComboBox)
 
     # Handle map editor page events
@@ -614,61 +661,83 @@ class EditorPage(Page):
 
     # New button clicked
     def new_button_clicked(self):
-        self.file_path = None
+        self.game.settings['map-editor']['last-path'] = None
+        self.game.save_settings()
+
         pygame.display.set_caption('Unsaved - BassieRacing')
 
-        # When standard size
-        for i, size in enumerate(Config.MAP_SIZES):
-            if i == self.sizeComboBox.selectedOptionIndex:
-                self.map = Map.generate_map(self.game, size, size)
-                self.mapEditor.map = self.map
-                self.mapEditor.center_camera()
-                return
-
-        # When custom size
-        self.map = Map.generate_map(self.game, 32, 32)
+        oldLaps = self.map.laps
+        self.map = Map.generate_map(self.game, self.map.width, self.map.height)
+        self.map.laps = oldLaps
         self.mapEditor.map = self.map
         self.mapEditor.center_camera()
-        self.sizeComboBox.set_selected(1)
 
     # Open button clicked
     def open_button_clicked(self):
         file_path = tkinter.filedialog.askopenfilename(title='Select a BassieRacing Map to open...', filetypes=[ ( 'JSON files', '*.json' ) ])
         if file_path:
-            self.game.focus()
-            self.file_path = file_path
+            self.game.settings['map-editor']['last-path'] = file_path
+            self.game.save_settings()
+
             pygame.display.set_caption(file_path + ' - BassieRacing')
+            self.game.focus()
+
             self.map = Map.load_from_file(file_path)
             if self.map != None:
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
 
+                # Select the right size amount
+                foundSize = False
                 for i, size in enumerate(Config.MAP_SIZES):
                     if size == self.map.width:
-                        self.selectedSizeIndex = i
-                        self.sizeComboBox.set_selected(i)
-                        return
+                        foundSize = True
+                        self.game.settings['map-editor']['size'] = i
+                        self.game.save_settings()
+                        self.sizeComboBox.set_selected(i, True)
+                        break
 
-                self.selectedSizeIndex = len(Config.MAP_SIZES)
-                self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
+                if not foundSize:
+                    self.game.settings['map-editor']['size'] = len(Config.MAP_SIZES)
+                    self.game.save_settings()
+                    self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
+
+                # Select the right laps amount
+                foundLaps = False
+                for i, laps in enumerate(Config.MAP_LAPS):
+                    if laps == self.map.laps:
+                        foundLaps = True
+                        self.game.settings['map-editor']['laps'] = i
+                        self.game.save_settings()
+                        self.lapsComboBox.set_selected(i)
+                        break
+
+                if not foundLaps:
+                    self.game.settings['map-editor']['laps'] = len(Config.MAP_LAPS)
+                    self.game.save_settings()
+                    self.lapsComboBox.set_text('Laps: %d \u25BC' % (self.map.laps))
 
     # Save button clicked
     def save_button_clicked(self):
-        if self.file_path == None:
+        if self.game.settings['map-editor']['last-path'] == None:
             file_path = tkinter.filedialog.asksaveasfilename(title='Select a location to save the BassieRacing Map...', filetypes=[ ( 'JSON files', '*.json' ) ], defaultextension='.json')
             if file_path:
-                self.game.focus()
-                self.file_path = file_path
+                self.game.settings['map-editor']['last-path'] = file_path
+                self.game.save_settings()
+
                 pygame.display.set_caption(file_path + ' - BassieRacing')
+                self.game.focus()
+
                 self.map.name = os.path.splitext(os.path.basename(file_path))[0]
                 self.map.blend_track(True)
 
-        if self.file_path != None:
-            self.map.save_to_file(self.file_path)
+        if self.game.settings['map-editor']['last-path'] != None:
+            self.map.save_to_file(self.game.settings['map-editor']['last-path'])
 
     # Grid toggle button changed
     def grid_togglebutton_changed(self, active):
-        self.grid = active
+        self.game.settings['map-editor']['grid'] = active
+        self.game.save_settings()
         self.mapEditor.grid = active
         self.mapEditor.camera.grid = active
 
@@ -679,20 +748,25 @@ class EditorPage(Page):
 
     # Size combo box changed
     def size_combo_box_changed(self, selectedOptionIndex):
-        self.selectedSizeIndex = selectedOptionIndex
+        self.game.settings['map-editor']['size'] = selectedOptionIndex
+        self.game.save_settings()
         for i, size in enumerate(Config.MAP_SIZES):
             if i == selectedOptionIndex:
                 self.map.resize(size, size)
                 self.mapEditor.center_camera()
                 break
 
+    # Laps combo box changed
+    def laps_combo_box_changed(self, selectedOptionIndex):
+        self.game.settings['map-editor']['laps'] = selectedOptionIndex
+        self.game.save_settings()
+        self.map.laps = Config.MAP_LAPS[selectedOptionIndex]
+
     # Brush combo box changed
     def brush_combo_box_changed(self, selectedOptionIndex):
-        self.selectedBrushIndex = selectedOptionIndex
-        for i, label in enumerate(MapEditor.TOOL_LABELS):
-            if i == selectedOptionIndex:
-                self.mapEditor.tool = i
-                break
+        self.game.settings['map-editor']['brush'] = selectedOptionIndex
+        self.game.save_settings()
+        self.mapEditor.tool = selectedOptionIndex
 
 # The help page class
 class HelpPage(Page):

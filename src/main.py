@@ -38,32 +38,6 @@ class Game:
         self.screen = pygame.display.set_mode(( self.width, self.height ), pygame.DOUBLEBUF | pygame.RESIZABLE)
         del os.environ['SDL_VIDEO_CENTERED']
 
-        # Load fonts
-        font_path = 'assets/fonts/PressStart2P-Regular.ttf'
-        self.titleFont = pygame.font.Font(font_path, 48)
-        self.textFont = pygame.font.Font(font_path, 24)
-        self.smallFont = pygame.font.Font(font_path, 16)
-
-        # Load images
-        self.tilesImage = pygame.image.load('assets/images/tiles.png').convert_alpha()
-        self.vehiclesImage = pygame.image.load('assets/images/vehicles.png').convert_alpha()
-        self.explosionImage = pygame.image.load('assets/images/explosion.png').convert_alpha()
-
-        # Load music
-        pygame.mixer.music.load('assets/music/deadmau5 - Infra Turbo Pigcart Racer.mp3')
-        pygame.mixer.music.set_volume(0.5)
-        pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
-
-        # Load sounds
-        self.checkpointSound = pygame.mixer.Sound('assets/sounds/checkpoint.wav')
-        self.clickSound = pygame.mixer.Sound('assets/sounds/click.wav')
-        self.crashSound = pygame.mixer.Sound('assets/sounds/crash.wav')
-        self.introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
-        self.finishSound = pygame.mixer.Sound('assets/sounds/finish.wav')
-        self.lapSound = pygame.mixer.Sound('assets/sounds/lap.wav')
-        self.tickSound = pygame.mixer.Sound('assets/sounds/tick.wav')
-        self.tockSound = pygame.mixer.Sound('assets/sounds/tock.wav')
-
         # Load settings
         if os.path.isfile('settings.json'):
             with open('settings.json', 'r') as file:
@@ -94,11 +68,43 @@ class Game:
                         'vehicle-color': VehicleColor.RED
                     }
                 },
+                'map-editor': {
+                    'last-path': None,
+                    'grid': False,
+                    'size': 1,
+                    'laps': 2,
+                    'brush': 3
+                },
                 'high-scores': [],
                 'custom-maps': []
             }
-            self.save_settings()
+
+        # Load fonts
+        font_path = 'assets/fonts/PressStart2P-Regular.ttf'
+        self.titleFont = pygame.font.Font(font_path, 48)
+        self.textFont = pygame.font.Font(font_path, 24)
+        self.smallFont = pygame.font.Font(font_path, 16)
+
+        # Load images
+        self.tilesImage = pygame.image.load('assets/images/tiles.png').convert_alpha()
+        self.vehiclesImage = pygame.image.load('assets/images/vehicles.png').convert_alpha()
+        self.explosionImage = pygame.image.load('assets/images/explosion.png').convert_alpha()
+
+        # Load music
         self.musicStart = self.settings['music']['position']
+        pygame.mixer.music.load('assets/music/deadmau5 - Infra Turbo Pigcart Racer.mp3')
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
+
+        # Load sounds
+        self.checkpointSound = pygame.mixer.Sound('assets/sounds/checkpoint.wav')
+        self.clickSound = pygame.mixer.Sound('assets/sounds/click.wav')
+        self.crashSound = pygame.mixer.Sound('assets/sounds/crash.wav')
+        self.introSound = pygame.mixer.Sound('assets/sounds/intro.wav')
+        self.finishSound = pygame.mixer.Sound('assets/sounds/finish.wav')
+        self.lapSound = pygame.mixer.Sound('assets/sounds/lap.wav')
+        self.tickSound = pygame.mixer.Sound('assets/sounds/tick.wav')
+        self.tockSound = pygame.mixer.Sound('assets/sounds/tock.wav')
 
         # Create hidden Tkinter window for file dialogs and error messages
         self.tkinter_window = tkinter.Tk()

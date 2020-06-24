@@ -28,6 +28,7 @@ class Config:
     EDITOR_TILE_SIZE = 32
     MAP_SIZES = [ 24, 32, 48, 64 ]
     MAP_SIZE_LABELS = [ 'Small', 'Medium', 'Large', 'Giant' ]
+    MAP_LAPS = [ 1, 2, 3, 4, 5, 6, 7, 8 ]
 
 # The colors constants class
 class Color:

@@ -22,7 +22,7 @@ if [ "$1" == "release" ]; then
 
         # Zip the dist folder
         cd dist
-        7z a bassieracing-1.0.0-win64.zip bassieracing-$VERSION-win64
+        7z a bassieracing-$VERSION-win64.zip bassieracing-$VERSION-win64
         cd ..
 
         rm -r build bassieracing.spec
