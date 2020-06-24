@@ -627,9 +627,10 @@ class VehicleSelector(WidgetGroup):
 
 # The vehicle viewport widget class
 class VehicleViewport(WidgetGroup):
-    def __init__(self, game, vehicle, x, y, width, height, map, vehicles):
+    def __init__(self, game, gamemode, vehicle, x, y, width, height, map, vehicles):
         WidgetGroup.__init__(self, game, x, y, width, height)
 
+        self.gamemode = gamemode
         self.vehicle = vehicle
         self.map = map
         self.vehicles = vehicles
@@ -665,43 +666,69 @@ class VehicleViewport(WidgetGroup):
     def handle_event(self, event):
         # Handle keydown events
         if event.type == pygame.KEYDOWN:
-            # Handle left player movement
-            if self.vehicle.id == VehicleId.LEFT:
-                if event.key == pygame.K_w:
-                    self.vehicle.moving = Vehicle.MOVING_FORWARD
-                if event.key == pygame.K_s:
-                    self.vehicle.moving = Vehicle.MOVING_BACKWARD
-                if event.key == pygame.K_a:
-                    self.vehicle.turning = Vehicle.TURNING_LEFT
-                if event.key == pygame.K_d:
-                    self.vehicle.turning = Vehicle.TURNING_RIGHT
+            # Single player game mode
+            if self.gamemode == GameMode.SINGLE_PLAYER:
+                # Handle player movement
+                if self.vehicle.id == VehicleId.LEFT:
+                    if event.key == pygame.K_w or event.key == pygame.K_UP:
+                        self.vehicle.moving = Vehicle.MOVING_FORWARD
+                    if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                        self.vehicle.moving = Vehicle.MOVING_BACKWARD
+                    if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                        self.vehicle.turning = Vehicle.TURNING_LEFT
+                    if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                        self.vehicle.turning = Vehicle.TURNING_RIGHT
 
-            # Handle right player movement
-            if self.vehicle.id == VehicleId.RIGHT:
-                if event.key == pygame.K_UP:
-                    self.vehicle.moving = Vehicle.MOVING_FORWARD
-                if event.key == pygame.K_DOWN:
-                    self.vehicle.moving = Vehicle.MOVING_BACKWARD
-                if event.key == pygame.K_LEFT:
-                    self.vehicle.turning = Vehicle.TURNING_LEFT
-                if event.key == pygame.K_RIGHT:
-                    self.vehicle.turning = Vehicle.TURNING_RIGHT
+            # Split screen game mode
+            if self.gamemode == GameMode.SPLIT_SCREEN:
+                # Handle left player movement
+                if self.vehicle.id == VehicleId.LEFT:
+                    if event.key == pygame.K_w:
+                        self.vehicle.moving = Vehicle.MOVING_FORWARD
+                    if event.key == pygame.K_s:
+                        self.vehicle.moving = Vehicle.MOVING_BACKWARD
+                    if event.key == pygame.K_a:
+                        self.vehicle.turning = Vehicle.TURNING_LEFT
+                    if event.key == pygame.K_d:
+                        self.vehicle.turning = Vehicle.TURNING_RIGHT
+
+                # Handle right player movement
+                if self.vehicle.id == VehicleId.RIGHT:
+                    if event.key == pygame.K_UP:
+                        self.vehicle.moving = Vehicle.MOVING_FORWARD
+                    if event.key == pygame.K_DOWN:
+                        self.vehicle.moving = Vehicle.MOVING_BACKWARD
+                    if event.key == pygame.K_LEFT:
+                        self.vehicle.turning = Vehicle.TURNING_LEFT
+                    if event.key == pygame.K_RIGHT:
+                        self.vehicle.turning = Vehicle.TURNING_RIGHT
 
          # Handle keyup events
         if event.type == pygame.KEYUP:
-            # Handle left player movement
-            if self.vehicle.id == VehicleId.LEFT:
-                if event.key == pygame.K_w or event.key == pygame.K_s:
-                    self.vehicle.moving = Vehicle.NOT_MOVING
-                if event.key == pygame.K_a or event.key == pygame.K_d:
-                    self.vehicle.turning = Vehicle.NOT_TURNING
+            # Single player game mode
+            if self.gamemode == GameMode.SINGLE_PLAYER:
+                # Handle player movement
+                if self.vehicle.id == VehicleId.LEFT:
+                    if event.key == pygame.K_w or event.key == pygame.K_s or event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                        self.vehicle.moving = Vehicle.NOT_MOVING
+                    if event.key == pygame.K_a or event.key == pygame.K_d or event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                        self.vehicle.turning = Vehicle.NOT_TURNING
 
-            # Handle right player movement
-            if self.vehicle.id == VehicleId.RIGHT:
-                if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
-                    self.vehicle.moving = Vehicle.NOT_MOVING
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    self.vehicle.turning = Vehicle.NOT_TURNING
+            # Split screen game mode
+            if self.gamemode == GameMode.SPLIT_SCREEN:
+                # Handle left player movement
+                if self.vehicle.id == VehicleId.LEFT:
+                    if event.key == pygame.K_w or event.key == pygame.K_s:
+                        self.vehicle.moving = Vehicle.NOT_MOVING
+                    if event.key == pygame.K_a or event.key == pygame.K_d:
+                        self.vehicle.turning = Vehicle.NOT_TURNING
+
+                # Handle right player movement
+                if self.vehicle.id == VehicleId.RIGHT:
+                    if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                        self.vehicle.moving = Vehicle.NOT_MOVING
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                        self.vehicle.turning = Vehicle.NOT_TURNING
 
         return False
 

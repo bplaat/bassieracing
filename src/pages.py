@@ -349,16 +349,16 @@ class GamePage(Page):
         minimap_size = self.game.width / 5
 
         if self.gamemode == GameMode.SINGLE_PLAYER:
-            self.leftVehicleViewport = VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width, self.game.height, self.map, self.vehicles)
+            self.leftVehicleViewport = VehicleViewport(self.game, self.gamemode, self.leftVehicle, 0, 0, self.game.width, self.game.height, self.map, self.vehicles)
             self.widgets.append(self.leftVehicleViewport)
 
             self.widgets.append(Rect(self.game, self.game.width - minimap_size - 12, self.game.height - minimap_size - 12, minimap_size + 4, minimap_size + 4, Color.BLACK))
             self.widgets.append(MiniMap(self.game, self.map, self.vehicles, self.game.width - minimap_size - 10, self.game.height - minimap_size - 10, minimap_size, minimap_size))
 
         if self.gamemode == GameMode.SPLIT_SCREEN:
-            self.leftVehicleViewport = VehicleViewport(self.game, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
+            self.leftVehicleViewport = VehicleViewport(self.game, self.gamemode, self.leftVehicle, 0, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
             self.widgets.append(self.leftVehicleViewport)
-            self.rightVehicleViewport = VehicleViewport(self.game, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
+            self.rightVehicleViewport = VehicleViewport(self.game, self.gamemode, self.rightVehicle, self.game.width // 2 + 1, 0, self.game.width // 2 - 1, self.game.height, self.map, self.vehicles)
             self.widgets.append(self.rightVehicleViewport)
 
             self.widgets.append(Rect(self.game, (self.game.width - minimap_size) // 2 - 2, 8, minimap_size + 4, minimap_size + 4, Color.BLACK))
@@ -465,7 +465,7 @@ class StatsPage(Page):
 
             if self.map.laps > 3:
                 i = 0
-                while i <= self.map.laps:
+                while i < self.map.laps:
                     text = 'Lap %d: %s' % (i + 1, formatTime(self.vehicles[VehicleId.LEFT].lapTimes[i]))
 
                     i += 1
