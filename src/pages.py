@@ -192,9 +192,91 @@ class PlayPage(Page):
     def multiplayer_button_clicked(self):
         self.game.page = MultiplayerPage(self.game)
 
-    # Back button clicked event
+    # Back button clicked
     def back_button_clicked(self):
         self.game.page = MenuPage(self.game)
+
+# The multiplayer page class
+class MultiplayerPage(Page):
+    # Create multiplayer page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+    # Create multiplayer page widgets
+    def create_widgets(self):
+        y = (self.game.height - (72 + 24 + 64 + 24 + 320 + 24 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Multiplayer', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 24
+        self.widgets.append(Button(self.game, 'Host a game', self.game.width // 6, y, self.game.width // 3 - 8, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.host_button_clicked))
+        self.widgets.append(Button(self.game, 'Direct connect', self.game.width // 6 + (self.game.width // 3 - 8) + 16, y, (self.game.width // 3 - 8), 64, self.game.textFont, Color.BLACK, Color.WHITE, self.direct_connect_button_clicked))
+        y += 64 + 24
+        self.widgets.append(Label(self.game, 'Hosted games in your network will appear here', 0, y, self.game.width, 320, self.game.textFont, Color.WHITE))
+        y += 320 + 24
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Host button clicked
+    def host_button_clicked(self):
+        self.game.page = SelectMapPage(self.game, GameMode.MULTIPLAYER)
+
+    # Direct connect button clicked
+    def direct_connect_button_clicked(self):
+        self.game.page = DirectConnectPage(self.game)
+
+    # Back button clicked
+    def back_button_clicked(self):
+        self.game.page = PlayPage(self.game)
+
+# The direct connect page class
+class DirectConnectPage(Page):
+    # Create direct connect page
+    def __init__(self, game):
+        Page.__init__(self, game)
+
+    # Create direct conect page widgets
+    def create_widgets(self):
+        y = (self.game.height - (72 + 24 + 64 + 24 + 64 + 32 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Direct Connect', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 24
+        self.widgets.append(Label(self.game, 'Enter the IP address of the host', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
+        y += 64 + 24
+        self.widgets.append(TextEdit(self.game, self.game.settings['multiplayer']['last-address'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, 'IP address...', Color.GRAY, 24, self.ip_address_text_edit_changed))
+        y += 64 + 32
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 4 - 8, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+        self.widgets.append(Button(self.game, 'Connect', self.game.width // 2 + 16, y, self.game.width // 4 - 8, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.connect_button_clicked))
+
+    # IP address text edit changed
+    def ip_address_text_edit_changed(self, text):
+        self.game.settings['multiplayer']['last-address'] = text
+
+    # Back button clicked
+    def back_button_clicked(self):
+        self.game.page = MultiplayerPage(self.game)
+
+    # Connect button clicked
+    def connect_button_clicked(self):
+        pass
+
+# The lobby page class
+class LobbyPage(Page):
+    # Create lobby page
+    def __init__(self, game, gamemode, map):
+        self.gamemode = gamemode
+        self.map = map
+        Page.__init__(self, game)
+
+    # Create lobby page widgets
+    def create_widgets(self):
+        self.widgets.append(Label(self.game, 'Game Lobby', 0, 24, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        self.widgets.append(Button(self.game, 'Close', 16, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.close_button_clicked))
+        self.widgets.append(Button(self.game, 'Race!', self.game.width - 16 - 240, self.game.height - 64 - 16, 240, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.race_button_clicked))
+
+    # Close button clicked
+    def close_button_clicked(self):
+        self.game.page = MultiplayerPage(self.game)
+
+    # Race button clicked
+    def race_button_clicked(self):
+        pass
 
 # The select map page class
 class SelectMapPage(Page):
@@ -218,7 +300,10 @@ class SelectMapPage(Page):
 
     # Back button clicked
     def back_button_clicked(self):
-        self.game.page = PlayPage(self.game)
+        if self.gamemode == GameMode.MULTIPLAYER:
+            self.game.page = MultiplayerPage(self.game)
+        else:
+            self.game.page = PlayPage(self.game)
 
     # Load button clicked
     def load_button_clicked(self):
@@ -229,7 +314,10 @@ class SelectMapPage(Page):
 
     # Continue button clicked
     def continue_button_clicked(self):
-        self.game.page = SelectVehiclePage(self.game, self.gamemode, self.mapSelector.selectedMap)
+        if self.gamemode == GameMode.MULTIPLAYER:
+            self.game.page = LobbyPage(self.game, self.gamemode, self.mapSelector.selectedMap)
+        else:
+            self.game.page = SelectVehiclePage(self.game, self.gamemode, self.mapSelector.selectedMap)
 
 # The select vehicle page class
 class SelectVehiclePage(Page):
@@ -527,27 +615,8 @@ class StatsPage(Page):
 
         self.widgets.append(Button(self.game, 'Continue', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.continue_button_clicked))
 
-    # Continue button clicked event
+    # Continue button clicked
     def continue_button_clicked(self):
-        self.game.page = MenuPage(self.game)
-
-# The multiplayer page class
-class MultiplayerPage(Page):
-    # Create multiplayer page
-    def __init__(self, game):
-        Page.__init__(self, game)
-
-    # Create multiplayer page widgets
-    def create_widgets(self):
-        y = (self.game.height - (72 + 64 + 16 + 24 + 64)) // 2
-        self.widgets.append(Label(self.game, 'Multiplayer', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
-        y += 72 + 16
-        self.widgets.append(Label(self.game, 'Coming soon...', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
-        y += 64 + 24
-        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
-
-    # Back button clicked event
-    def back_button_clicked(self):
         self.game.page = PlayPage(self.game)
 
 # The edit page class
@@ -771,7 +840,7 @@ class HelpPage(Page):
         y += 64 + 32
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
-    # Back button clicked event
+    # Back button clicked
     def back_button_clicked(self):
         self.game.page = MenuPage(self.game)
 
@@ -783,9 +852,11 @@ class SettingsPage(Page):
 
     # Create settings page widgets
     def create_widgets(self):
-        y = (self.game.height - (72 + (64 + 16) * 5 + 8 + 24 + 64)) // 2
+        y = (self.game.height - (72 + (64 + 16) * 6 + 8 * 2 + 24 + 64)) // 2
         self.widgets.append(Label(self.game, 'Settings', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
         y += 72 + 16
+        self.widgets.append(TextEdit(self.game, self.game.settings['account']['username'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, 'Username...', Color.GRAY, 24, self.username_text_edit_changed))
+        y += 64 + 24
         self.widgets.append(ToggleButton(self.game, [ 'Intro disabled', 'Intro enabled' ], self.game.settings['intro']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.intro_toggle_button_changed))
         y += 64 + 16
         self.widgets.append(ToggleButton(self.game, [ 'Fancy music disabled', 'Fancy music enabled' ], self.game.settings['music']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.music_toggle_button_changed))
@@ -797,6 +868,10 @@ class SettingsPage(Page):
         self.widgets.append(Button(self.game, 'Clear custom maps cache', self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.clear_custom_maps_cache_button_clicked))
         y += 64 + 24
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Username text edit changed
+    def username_text_edit_changed(self, text):
+        self.game.settings['account']['username'] = text
 
     # Intro toggle button changed
     def intro_toggle_button_changed(self, active):
@@ -826,7 +901,7 @@ class SettingsPage(Page):
     def clear_custom_maps_cache_button_clicked(self):
         self.game.settings['custom-maps'] = []
 
-    # Back button clicked event
+    # Back button clicked
     def back_button_clicked(self):
         self.game.page = MenuPage(self.game)
 

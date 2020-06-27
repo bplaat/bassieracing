@@ -207,7 +207,18 @@ class ComboBox(Button):
                     return True
 
         # Handle root button events
-        return Button.handle_event(self, event)
+        if Button.handle_event(self, event):
+            return True
+
+        # When root button dont handeld the event and it is a mouse event deactivate the widget
+        if self.active and event.type == pygame.MOUSEBUTTONUP:
+            if self.game.settings['sound-effects']['enabled']:
+                self.game.clickSound.play()
+
+            self.active = False
+            self.backgroundColor = self.blurBackgroundColor
+
+        return False
 
     # Draw combo box
     def draw(self, surface):
@@ -218,6 +229,86 @@ class ComboBox(Button):
         if self.active:
             for widget in self.widgets:
                 widget.draw(surface)
+
+# The text edit widget class
+class TextEdit(Label):
+    # Create text edit
+    def __init__(self, game, text, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, placeholder, placeholderColor, maxLength, changedCallback = None, callbackExtra = None):
+        Label.__init__(self, game, text, x, y, width, height, font, color, TextAlign.CENTER, self.label_clicked)
+        self.active = False
+        self.empty = False
+        self.normalColor = color
+        self.backgroundColor = backgroundColor
+        self.blurBackgroundColor = backgroundColor
+        self.activeBackgroundColor = activeBackgroundColor
+        self.placeholder = placeholder
+        self.placeholderColor = placeholderColor
+        self.maxLength = maxLength
+        self.changedCallback = changedCallback
+        self.callbackExtra = callbackExtra
+
+        if len(self.text) == 0:
+            self.empty = True
+            self.color = self.placeholderColor
+            self.set_text(self.placeholder)
+
+    # Root label clicked
+    def label_clicked(self):
+        self.active = True
+        self.backgroundColor = self.activeBackgroundColor
+
+    # Handle text edit events
+    def handle_event(self, event):
+        if self.active and event.type == pygame.KEYDOWN:
+            if self.empty:
+                self.text = ''
+
+            if event.key == pygame.K_RETURN:
+                self.active = False
+                self.backgroundColor = self.blurBackgroundColor
+
+            elif event.key == pygame.K_BACKSPACE:
+                if len(self.text) > 0:
+                    self.set_text(self.text[:-1])
+
+            else:
+                if self.empty:
+                    self.empty = False
+                    self.color = self.normalColor
+
+                if len(self.text) < self.maxLength:
+                    self.set_text(self.text + event.unicode)
+
+            # Call change callback
+            if self.changedCallback != None:
+                if self.callbackExtra != None:
+                    self.changedCallback(self.text, self.callbackExtra)
+                else:
+                    self.changedCallback(self.text)
+
+            if self.text == '':
+                self.empty = True
+                self.color = self.placeholderColor
+                self.set_text(self.placeholder)
+
+        # Handle root label events
+        if Label.handle_event(self, event):
+            return True
+
+        # When root label dont handeld the event and it is a mouse event deactivate the widget
+        if self.active and event.type == pygame.MOUSEBUTTONUP:
+            if self.game.settings['sound-effects']['enabled']:
+                self.game.clickSound.play()
+
+            self.active = False
+            self.backgroundColor = self.blurBackgroundColor
+
+        return False
+
+    # Draw text edit
+    def draw(self, surface):
+        surface.fill(self.backgroundColor, ( self.x, self.y, self.width, self.height ))
+        Label.draw(self, surface)
 
 # The image widget class
 class Image(Widget):

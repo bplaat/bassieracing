@@ -14,6 +14,7 @@ from pages import *
 import pygame
 import time
 import tkinter
+import signal
 import urllib.request
 from utils import *
 
@@ -28,15 +29,15 @@ class Game:
         self.running = True
 
         # Init the window
+        pygame.display.set_caption('BassieRacing')
+        self.iconImage = pygame.image.load('assets/images/icon.png')
+        pygame.display.set_icon(self.iconImage)
+
         self.width = Config.WIDTH
         self.height = Config.HEIGHT
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         self.screen = pygame.display.set_mode(( self.width, self.height ), pygame.DOUBLEBUF | pygame.RESIZABLE)
         del os.environ['SDL_VIDEO_CENTERED']
-
-        pygame.display.set_caption('BassieRacing')
-        self.iconImage = pygame.image.load('assets/images/icon.png')
-        pygame.display.set_icon(self.iconImage)
 
         # Load settings
         if os.path.isfile('settings.json'):
@@ -47,6 +48,9 @@ class Game:
             self.settings = {
                 'type': 'BassieRacing Settings',
                 'version': Config.VERSION,
+                'account': {
+                    'username': 'Anonymous'
+                },
                 'intro': {
                     'enabled': True
                 },
@@ -67,6 +71,9 @@ class Game:
                         'vehicle-id': 0,
                         'vehicle-color': VehicleColor.RED
                     }
+                },
+                'multiplayer': {
+                    'last-address': ''
                 },
                 'map-editor': {
                     'last-path': None,
@@ -119,11 +126,20 @@ class Game:
         else:
             self.page = MenuPage(self)
 
+        # Init signal handlers
+        signal.signal(signal.SIGINT, self.handle_signals)
+        signal.signal(signal.SIGTERM, self.handle_signals)
+
     # Save settings to file
     def save_settings(self):
         self.settings['music']['position'] = round(self.musicStart + pygame.mixer.music.get_pos() / 1000, 3)
         with open('settings.json', 'w') as file:
             file.write(json.dumps(self.settings, separators=(',', ':')) + '\n')
+
+    # Handle signals
+    def handle_signals(self, sig, frame):
+        self.save_settings()
+        self.running = False
 
     # Detect new version
     def detect_new_version(self):

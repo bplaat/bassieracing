@@ -34,6 +34,7 @@ class Config:
 class Color:
     BLACK = ( 0, 0, 0 )
     DARK = ( 25, 25, 25 )
+    GRAY = ( 125, 125, 125 )
     GREEN = ( 0, 255, 0 )
     LIGHT_GRAY = ( 225, 225, 225 )
     ORANGE = ( 255, 128, 0 )
@@ -51,7 +52,7 @@ class TextAlign:
 class GameMode:
     SINGLE_PLAYER = 0
     SPLIT_SCREEN = 1
-    MULTI_PLAYER = 2
+    MULTIPLAYER = 2
 
 # The vehicle id constants class
 class VehicleId:
