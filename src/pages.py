@@ -25,10 +25,16 @@ class Page:
 
         # Create widgets
         self.widgets = []
+        self.topWidgets = []
         self.create_widgets()
 
     # Handle page events
     def handle_event(self, event):
+        # Send all events to the top widgets
+        for widget in reversed(self.topWidgets):
+            if widget.handle_event(event):
+                return True
+
         # Send all events to the widgets
         for widget in reversed(self.widgets):
             if widget.handle_event(event):
@@ -37,6 +43,7 @@ class Page:
         # On resize recreated widgets
         if event.type == pygame.VIDEORESIZE:
             self.widgets = []
+            self.topWidgets = []
             self.create_widgets()
 
         return False
@@ -52,6 +59,10 @@ class Page:
 
         # Draw widgets
         for widget in self.widgets:
+            widget.draw(surface)
+
+        # Draw top widgets
+        for widget in self.topWidgets:
             widget.draw(surface)
 
 # The intro page class
@@ -622,53 +633,29 @@ class StatsPage(Page):
 # The edit page class
 class EditorPage(Page):
     # Create edit page
-    def __init__(self, game):
-        loaded = False
+    def __init__(self, game, map = None):
+        if map == None:
+            loaded = False
 
-        # Open last opend path
-        if game.settings['map-editor']['last-path'] != None:
-            if os.path.isfile(game.settings['map-editor']['last-path']):
-                loaded = True
-                pygame.display.set_caption(game.settings['map-editor']['last-path'] + ' - BassieRacing')
+            # Open last opend path
+            if game.settings['map-editor']['last-path'] != None:
+                if os.path.isfile(game.settings['map-editor']['last-path']):
+                    self.map = Map.load_from_file(game.settings['map-editor']['last-path'])
+                    if self.map != None:
+                        loaded = True
+                        pygame.display.set_caption(game.settings['map-editor']['last-path'] + ' - BassieRacing')
+                    else:
+                        game.settings['map-editor']['last-path'] = None
+                else:
+                    game.settings['map-editor']['last-path'] = None
 
-                self.map = Map.load_from_file(game.settings['map-editor']['last-path'])
-                self.mapCamera = { 'x': None, 'y': None }
-                if self.map != None:
-                    # Select the right size amount
-                    foundSize = False
-                    for i, size in enumerate(Config.MAP_SIZES):
-                        if size == self.map.width:
-                            foundSize = True
-                            game.settings['map-editor']['size'] = i
-                            break
+            if not loaded:
+                pygame.display.set_caption('Unsaved - BassieRacing')
+                self.map = Map.generate_new(game)
+        else:
+            self.map = map
 
-                    if not foundSize:
-                        game.settings['map-editor']['size'] = len(Config.MAP_SIZES)
-
-                    # Select the right laps amount
-                    foundLaps = False
-                    for i, laps in enumerate(Config.MAP_LAPS):
-                        if laps == self.map.laps:
-                            foundLaps = True
-                            game.settings['map-editor']['laps'] = i
-                            break
-
-                    if not foundLaps:
-                        game.settings['map-editor']['laps'] = len(Config.MAP_LAPS)
-            else:
-                game.settings['map-editor']['last-path'] = None
-
-        if not loaded:
-            pygame.display.set_caption('Unsaved - BassieRacing')
-            size = Config.MAP_SIZES[game.settings['map-editor']['size']]
-            self.map = Map.generate_map(game, size, size)
-            self.mapCamera = { 'x': None, 'y': None }
-
-            if game.settings['map-editor']['size'] == len(Config.MAP_SIZES):
-                game.settings['map-editor']['size'] = 1
-
-            if game.settings['map-editor']['laps'] == len(Config.MAP_LAPS):
-                game.settings['map-editor']['laps'] = 2
+        self.mapCamera = { 'x': None, 'y': None }
 
         Page.__init__(self, game, Color.DARK)
 
@@ -683,20 +670,8 @@ class EditorPage(Page):
         self.widgets.append(ToggleButton(self.game, [ 'Grid off', 'Grid on' ], self.game.settings['map-editor']['grid'], 16 + (128 + 16) * 3 + 16, 16, 256, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.grid_togglebutton_changed))
         self.widgets.append(Button(self.game, 'Back', self.game.width - (16 + 128), 16, 128, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
 
-        self.sizeComboBox = ComboBox(self.game, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ],
-            0 if self.game.settings['map-editor']['size'] == len(Config.MAP_SIZES) else self.game.settings['map-editor']['size'], 16, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
-        if self.game.settings['map-editor']['size'] == len(Config.MAP_SIZES):
-            self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
-        self.widgets.append(self.sizeComboBox)
-
-        self.lapsComboBox = ComboBox(self.game, [ 'Laps: %d' % (laps) for laps in Config.MAP_LAPS ], self.game.settings['map-editor']['laps'], 16 + (self.game.width - 16 * 4) // 3 + 16, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.laps_combo_box_changed)
-        if self.game.settings['map-editor']['laps'] == len(Config.MAP_LAPS):
-            self.sizeComboBox.set_text('Laps: %d \u25BC' % (self.game.settings['map-editor']['laps']))
-        self.widgets.append(self.lapsComboBox)
-
-        # self.mapOptionsButton = Button(s)
-
-        self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, self.game.settings['map-editor']['brush'], 16 + ((self.game.width - 16 * 4) // 3) * 2 + 16 * 2, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
+        self.widgets.append(Button(self.game, 'Map Options', 16, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.map_options_button_clicked))
+        self.brushComboBox = ComboBox(self.game, self, MapEditor.TOOL_LABELS, self.game.settings['map-editor']['brush'], 16 + ((self.game.width - 16 * 4) // 2) + 16, self.game.height - 64 - 16, (self.game.width - 16 * 2) // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
         self.widgets.append(self.brushComboBox)
 
     # Handle map editor page events
@@ -727,9 +702,7 @@ class EditorPage(Page):
 
         pygame.display.set_caption('Unsaved - BassieRacing')
 
-        oldLaps = self.map.laps
-        self.map = Map.generate_map(self.game, self.map.width, self.map.height)
-        self.map.laps = oldLaps
+        self.map = Map.generate_new(self.game)
         self.mapEditor.map = self.map
         self.mapEditor.center_camera()
 
@@ -747,32 +720,6 @@ class EditorPage(Page):
                 self.mapEditor.map = self.map
                 self.mapEditor.center_camera()
 
-                # Select the right size amount
-                foundSize = False
-                for i, size in enumerate(Config.MAP_SIZES):
-                    if size == self.map.width:
-                        foundSize = True
-                        self.game.settings['map-editor']['size'] = i
-                        self.sizeComboBox.set_selected(i, True)
-                        break
-
-                if not foundSize:
-                    self.game.settings['map-editor']['size'] = len(Config.MAP_SIZES)
-                    self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
-
-                # Select the right laps amount
-                foundLaps = False
-                for i, laps in enumerate(Config.MAP_LAPS):
-                    if laps == self.map.laps:
-                        foundLaps = True
-                        self.game.settings['map-editor']['laps'] = i
-                        self.lapsComboBox.set_selected(i)
-                        break
-
-                if not foundLaps:
-                    self.game.settings['map-editor']['laps'] = len(Config.MAP_LAPS)
-                    self.lapsComboBox.set_text('Laps: %d \u25BC' % (self.map.laps))
-
     # Save button clicked
     def save_button_clicked(self):
         if self.game.settings['map-editor']['last-path'] == None:
@@ -783,7 +730,6 @@ class EditorPage(Page):
                 pygame.display.set_caption(file_path + ' - BassieRacing')
                 self.game.focus()
 
-                self.map.name = os.path.splitext(os.path.basename(file_path))[0]
                 self.map.blend_track(True)
 
         if self.game.settings['map-editor']['last-path'] != None:
@@ -800,24 +746,126 @@ class EditorPage(Page):
         pygame.display.set_caption('BassieRacing')
         self.game.page = MenuPage(self.game)
 
-    # Size combo box changed
-    def size_combo_box_changed(self, selectedOptionIndex):
-        self.game.settings['map-editor']['size'] = selectedOptionIndex
-        for i, size in enumerate(Config.MAP_SIZES):
-            if i == selectedOptionIndex:
-                self.map.resize(size, size)
-                self.mapEditor.center_camera()
-                break
-
-    # Laps combo box changed
-    def laps_combo_box_changed(self, selectedOptionIndex):
-        self.game.settings['map-editor']['laps'] = selectedOptionIndex
-        self.map.laps = Config.MAP_LAPS[selectedOptionIndex]
+    # Map options button clicked
+    def map_options_button_clicked(self):
+        self.game.page = MapOptionsPage(self.game, self.map)
 
     # Brush combo box changed
     def brush_combo_box_changed(self, selectedOptionIndex):
         self.game.settings['map-editor']['brush'] = selectedOptionIndex
         self.mapEditor.tool = selectedOptionIndex
+
+# The map options page class
+class MapOptionsPage(Page):
+    # Create map options page
+    def __init__(self, game, map):
+        self.map = map
+
+        # Save map options to the settings
+
+        # Select map name
+        game.settings['map-options']['name'] = map.name
+
+        # Select the right size amount
+        foundSize = False
+        for i, size in enumerate(Config.MAP_SIZES):
+            if size == map.width:
+                foundSize = True
+                game.settings['map-options']['size'] = i
+                break
+
+        if not foundSize:
+            game.settings['map-options']['size'] = len(Config.MAP_SIZES)
+
+        # Select the right laps amount
+        foundLaps = False
+        for i, laps in enumerate(Config.MAP_LAPS):
+            if laps == map.laps:
+                foundLaps = True
+                game.settings['map-options']['laps'] = i
+                break
+
+        if not foundLaps:
+            game.settings['map-options']['laps'] = len(Config.MAP_LAPS)
+
+        # Select crash enabled
+        game.settings['map-options']['crashes']['enabled'] = map.crashes['enabled']
+
+        # Select the right crash timeout amount
+        foundCrashTimeout = False
+        for i, crashTimeout in enumerate(Config.MAP_CRASH_TIMEOUTS):
+            if crashTimeout == map.crashes['timeout']:
+                foundCrashTimeout = True
+                game.settings['map-options']['crashes']['timeout'] = i
+                break
+
+        if not foundCrashTimeout:
+            game.settings['map-options']['crashes']['timeout'] = len(Config.MAP_CRASH_TIMEOUTS)
+
+        Page.__init__(self, game)
+
+    # Create map options page widgets
+    def create_widgets(self):
+        y = (self.game.height - (72 + 24 + (64 + 16) * 5 + 8 * 2 + 64)) // 2
+        self.widgets.append(Label(self.game, 'Map Options', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
+        y += 72 + 24
+
+        self.widgets.append(TextEdit(self.game, self.game.settings['map-options']['name'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, 'Map name...', Color.GRAY, 24, self.name_text_edit_changed))
+        y += 64 + 16
+
+        self.sizeComboBox = ComboBox(self.game, self, [ '%s (%dx%d)' % (Config.MAP_SIZE_LABELS[i], size, size) for i, size in enumerate(Config.MAP_SIZES) ],
+            0 if self.game.settings['map-options']['size'] == len(Config.MAP_SIZES) else self.game.settings['map-options']['size'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.size_combo_box_changed)
+        if self.game.settings['map-options']['size'] == len(Config.MAP_SIZES):
+            self.sizeComboBox.set_text('Custom (%dx%d) \u25BC' % (self.map.width, self.map.height))
+        self.widgets.append(self.sizeComboBox)
+        y += 64 + 16
+
+        self.lapsComboBox = ComboBox(self.game, self, [ 'Laps: %d' % (laps) for laps in Config.MAP_LAPS ], self.game.settings['map-options']['laps'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.laps_combo_box_changed)
+        if self.game.settings['map-options']['laps'] == len(Config.MAP_LAPS):
+            self.lapsComboBox.set_text('Laps: %d \u25BC' % (self.map.laps))
+        self.widgets.append(self.lapsComboBox)
+        y += 64 + 24
+
+        self.widgets.append(ToggleButton(self.game, [ 'Crashes disabled', 'Crashes enabled' ], self.game.settings['map-options']['crashes']['enabled'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.crashes_enabled_toggle_button_changed))
+        y += 64 + 16
+
+        self.crashesTimeoutComboBox = ComboBox(self.game, self, [ 'Crash timeout: %.1f s' % (crashTimeout) for crashTimeout in Config.MAP_CRASH_TIMEOUTS ], self.game.settings['map-options']['crashes']['timeout'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.crashes_timeout_combo_box_changed)
+        if self.game.settings['map-options']['crashes']['timeout'] == len(Config.MAP_CRASH_TIMEOUTS):
+            self.crashesTimeoutComboBox.set_text('Crash timeout: %.1f s \u25BC' % (self.map.crashes['timeout']))
+        self.widgets.append(self.crashesTimeoutComboBox)
+        y += 64 + 24
+
+        self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
+
+    # Name text edit changed
+    def name_text_edit_changed(self, text):
+        self.game.settings['map-options']['name'] = text
+        self.map.name = text
+
+    # Size combo box changed
+    def size_combo_box_changed(self, selectedOptionIndex):
+        self.game.settings['map-options']['size'] = selectedOptionIndex
+
+    # Laps combo box changed
+    def laps_combo_box_changed(self, selectedOptionIndex):
+        self.game.settings['map-options']['laps'] = selectedOptionIndex
+        self.map.laps = Config.MAP_LAPS[selectedOptionIndex]
+
+    # Crashes enabled toggle button changed
+    def crashes_enabled_toggle_button_changed(self, active):
+        self.game.settings['map-options']['crashes']['enabled'] = active
+        self.map.crashes['enabled'] = active
+
+    # Crashes timeout combo box changed
+    def crashes_timeout_combo_box_changed(self, selectedOptionIndex):
+        self.game.settings['map-options']['crashes']['timeout'] = selectedOptionIndex
+        self.map.crashes['timeout'] = Config.MAP_CRASH_TIMEOUTS[selectedOptionIndex]
+
+    # Back button clicked
+    def back_button_clicked(self):
+        if self.game.settings['map-options']['size'] != len(Config.MAP_SIZES):
+            self.map.resize(Config.MAP_SIZES[self.game.settings['map-options']['size']], Config.MAP_SIZES[self.game.settings['map-options']['size']])
+        self.game.page = EditorPage(self.game, self.map)
 
 # The help page class
 class HelpPage(Page):

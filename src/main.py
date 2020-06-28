@@ -103,12 +103,24 @@ class Game:
                     self.settings['map-editor']['last-path'] = None
                 if 'grid' not in self.settings['map-editor']:
                     self.settings['map-editor']['grid'] = False
-                if 'size' not in self.settings['map-editor']:
-                    self.settings['map-editor']['size'] = 1
-                if 'laps' not in self.settings['map-editor']:
-                    self.settings['map-editor']['laps'] = 2
                 if 'brush' not in self.settings['map-editor']:
                     self.settings['map-editor']['brush'] = 3
+
+                if 'map-options' not in self.settings:
+                    self.settings['map-options'] = {}
+                if 'name' not in self.settings['map-options']:
+                    self.settings['map-options']['name'] = 'Custom Map'
+                if 'size' not in self.settings['map-options']:
+                    self.settings['map-options']['size'] = Config.MAP_DEFAULT_SIZES_INDEX
+                if 'laps' not in self.settings['map-options']:
+                    self.settings['map-options']['laps'] = Config.MAP_DEFAULT_LAPS_INDEX
+
+                if 'crashes' not in self.settings['map-options']:
+                    self.settings['map-options']['crashes'] = {}
+                if 'enabled' not in self.settings['map-options']['crashes']:
+                    self.settings['map-options']['crashes']['enabled'] = True
+                if 'timeout' not in self.settings['map-options']['crashes']:
+                    self.settings['map-options']['crashes']['timeout'] = Config.MAP_DEFAULT_CRASH_TIMEOUT_INDEX
 
                 if 'high-scores' not in self.settings:
                     self.settings['high-scores'] = []
@@ -198,9 +210,16 @@ class Game:
             'map-editor': {
                 'last-path': None,
                 'grid': False,
-                'size': 1,
-                'laps': 2,
-                'brush': 3
+                'brush': Config.EDITOR_DEFAULT_BRUSH_INDEX,
+            },
+            'map-options': {
+                'name': 'Custom Map',
+                'size': Config.MAP_DEFAULT_SIZES_INDEX,
+                'laps': Config.MAP_DEFAULT_LAPS_INDEX,
+                'crashes': {
+                    'enabled': True,
+                    'timeout': Config.MAP_DEFAULT_CRASH_TIMEOUT_INDEX
+                }
             },
             'high-scores': [],
             'custom-maps': []

@@ -147,9 +147,10 @@ class ToggleButton(Button):
 # The combo box widget class
 class ComboBox(Button):
     # Create combo box
-    def __init__(self, game, options, selectedOptionIndex, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
+    def __init__(self, game, page, options, selectedOptionIndex, x, y, width, height, font, color, backgroundColor, activeBackgroundColor, changedCallback = None, callbackExtra = None):
         Button.__init__(self, game, options[selectedOptionIndex] + ' \u25BC', x, y, width, height, font, color, backgroundColor, self.root_button_clicked)
 
+        self.page = page
         self.options = options
         self.selectedOptionIndex = selectedOptionIndex
         self.selectedOption = options[selectedOptionIndex]
@@ -161,8 +162,12 @@ class ComboBox(Button):
 
         # Create combo box widgets
         ry = y + height
+
         if len(options) * height > game.height - (y + height):
             ry = y - len(options) * height
+
+        if y - len(options) * height < 0:
+            ry = y + height // 2 - (int)((len(options) / 2) * height)
 
         self.widgets = []
         for i, option in enumerate(options):
@@ -176,7 +181,9 @@ class ComboBox(Button):
             self.selectedOption = self.options[selectedOptionIndex]
             self.set_text(self.options[selectedOptionIndex] + ' \u25BC')
             self.backgroundColor = self.blurBackgroundColor
+
             self.active = False
+            self.page.topWidgets = []
 
             # Call change callback
             if self.changedCallback != None:
@@ -191,21 +198,17 @@ class ComboBox(Button):
         self.active = not self.active
         if self.active:
             self.backgroundColor = self.activeBackgroundColor
+            self.page.topWidgets = self.widgets
         else:
             self.backgroundColor = self.blurBackgroundColor
+            self.page.topWidgets = []
 
     # Option button clicked
     def option_button_clicked(self, optionIndex):
-        self.set_selected(optionIndex)
+        self.set_selected(optionIndex, True)
 
     # Handle combo box events
     def handle_event(self, event):
-        # If active handle widget events
-        if self.active:
-            for widget in reversed(self.widgets):
-                if widget.handle_event(event):
-                    return True
-
         # Handle root button events
         if Button.handle_event(self, event):
             return True
@@ -217,18 +220,9 @@ class ComboBox(Button):
 
             self.active = False
             self.backgroundColor = self.blurBackgroundColor
+            self.page.topWidgets = []
 
         return False
-
-    # Draw combo box
-    def draw(self, surface):
-        # Draw root button
-        Button.draw(self, surface)
-
-        # If active draw widgets
-        if self.active:
-            for widget in self.widgets:
-                widget.draw(surface)
 
 # The text edit widget class
 class TextEdit(Label):

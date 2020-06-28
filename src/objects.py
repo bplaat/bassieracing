@@ -379,14 +379,23 @@ class Map:
         self.width = width
         self.height = height
 
-    # Generate random map
+    # Generate new random map
     @staticmethod
-    def generate_map(game, width, height):
-        map = Map((int)(game.time * 1000), 'Custom Map', width, height)
-        map.laps = Config.DEFAULT_LAPS_COUNT
+    def generate_new(game):
+        if game.settings['map-options']['size'] == len(Config.MAP_SIZES):
+            game.settings['map-options']['size'] = Config.MAP_DEFAULT_SIZES_INDEX
+        width = height = Config.MAP_SIZES[game.settings['map-options']['size']]
+        map = Map((int)(game.time * 1000), game.settings['map-options']['name'], width, height)
+
+        if game.settings['map-options']['laps'] == len(Config.MAP_LAPS):
+            game.settings['map-options']['laps'] = Config.MAP_DEFAULT_LAPS_INDEX
+        map.laps = Config.MAP_LAPS[game.settings['map-options']['laps']]
+
+        if game.settings['map-options']['crashes']['timeout'] == len(Config.MAP_CRASH_TIMEOUTS):
+            game.settings['map-options']['crashes']['timeout'] = Config.MAP_DEFAULT_CRASH_TIMEOUT_INDEX
         map.crashes = {
-            'enabled': True,
-            'timeout': Config.DEFAULT_CRASH_TIMEOUT
+            'enabled': game.settings['map-options']['crashes']['enabled'],
+            'timeout': Config.MAP_CRASH_TIMEOUTS[game.settings['map-options']['crashes']['timeout']]
         }
 
         map.noise = {

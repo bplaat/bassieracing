@@ -15,8 +15,6 @@ class Config:
     # Game constants
     TILE_SPRITE_SIZE = 128
     PIXELS_PER_METER = 18
-    DEFAULT_LAPS_COUNT = 3
-    DEFAULT_CRASH_TIMEOUT = 1
     EXPLOSION_ANIMATION_FRAME_COUNT = 5
     EXPLOSION_ANIMATION_FRAME_TIME = 0.2
     COUNTDOWN_CLOCK_TICKS = 4
@@ -26,9 +24,14 @@ class Config:
     # Editor constants
     EDITOR_CAMERA_BORDER = 12
     EDITOR_TILE_SIZE = 32
+    EDITOR_DEFAULT_BRUSH_INDEX = 3
+    MAP_DEFAULT_SIZES_INDEX = 1
     MAP_SIZES = [ 24, 32, 48, 64 ]
     MAP_SIZE_LABELS = [ 'Small', 'Medium', 'Large', 'Giant' ]
+    MAP_DEFAULT_LAPS_INDEX = 2
     MAP_LAPS = [ 1, 2, 3, 4, 5, 6, 7, 8 ]
+    MAP_DEFAULT_CRASH_TIMEOUT_INDEX = 2
+    MAP_CRASH_TIMEOUTS = [ 0, 0.5, 1, 1.5, 2, 5, 10 ]
 
 # The colors constants class
 class Color:
