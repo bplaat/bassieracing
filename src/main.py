@@ -1,7 +1,8 @@
 # BassieRacing - A topdown 2D two player racing game
 # Made by Bastiaan van der Plaat (https://bastiaan.ml/)
 # GitHub repo: https://github.com/bplaat/bassieracing
-# Install all dependencies: pip install pygame
+# Windows install all dependencies: pip install pygame
+# Ubuntu install all dependencies: sudo apt install python3-pygame python3-tk
 # Made with pygame (but only used to plot images and text to the screen and to handle the window events)
 # It also uses tkinter for the file open and save dialogs and error messages
 
@@ -40,51 +41,83 @@ class Game:
         del os.environ['SDL_VIDEO_CENTERED']
 
         # Load settings
-        if os.path.isfile('settings.json'):
-            with open('settings.json', 'r') as file:
+        if os.path.isfile(os.path.expanduser('~/bassieracing-settings.json')):
+            with open(os.path.expanduser('~/bassieracing-settings.json'), 'r') as file:
                 self.settings = json.load(file)
+
+                if self.settings['type'] != 'BassieRacing Settings':
+                    self.use_default_settings()
+
                 self.settings['version'] = Config.VERSION
+
+                # Restore corrupt settings fields
+                if 'account' not in self.settings:
+                    self.settings['account'] = {}
+                if 'username' not in self.settings['account']:
+                    self.settings['account']['username'] = 'Anonymous'
+
+                if 'intro' not in self.settings:
+                    self.settings['intro'] = {}
+                if 'enabled' not in self.settings['intro']:
+                    self.settings['intro']['enabled'] = True
+
+                if 'music' not in self.settings:
+                    self.settings['music'] = {}
+                if 'enabled' not in self.settings['music']:
+                    self.settings['music']['enabled'] = True
+                if 'position' not in self.settings['music']:
+                    self.settings['music']['position'] = 0
+
+                if 'sound-effects' not in self.settings:
+                    self.settings['sound-effects'] = {}
+                if 'enabled' not in self.settings['sound-effects']:
+                    self.settings['sound-effects']['enabled'] = True
+
+                if 'selected' not in self.settings:
+                    self.settings['selected'] = {}
+                if 'map-id' not in self.settings['selected']:
+                    self.settings['selected']['map-id'] = None
+
+                if 'left' not in self.settings['selected']:
+                    self.settings['selected']['left'] = {}
+                if 'vehicle-id' not in self.settings['selected']['left']:
+                    self.settings['selected']['left']['vehicle-id'] = 0
+                if 'vehicle-color' not in self.settings['selected']['left']:
+                    self.settings['selected']['left']['vehicle-color'] = VehicleColor.BLUE
+
+                if 'right' not in self.settings['selected']:
+                    self.settings['selected']['right'] = {}
+                if 'vehicle-id' not in self.settings['selected']['right']:
+                    self.settings['selected']['right']['vehicle-id'] = 0
+                if 'vehicle-color' not in self.settings['selected']['right']:
+                    self.settings['selected']['right']['vehicle-color'] = VehicleColor.RED
+
+                if 'multiplayer' not in self.settings:
+                    self.settings['multiplayer'] = {}
+                if 'last-address' not in self.settings['multiplayer']:
+                    self.settings['multiplayer']['last-address'] = ''
+
+                if 'map-editor' not in self.settings:
+                    self.settings['map-editor'] = {}
+                if 'last-path' not in self.settings['map-editor']:
+                    self.settings['map-editor']['last-path'] = None
+                if 'grid' not in self.settings['map-editor']:
+                    self.settings['map-editor']['grid'] = False
+                if 'size' not in self.settings['map-editor']:
+                    self.settings['map-editor']['size'] = 1
+                if 'laps' not in self.settings['map-editor']:
+                    self.settings['map-editor']['laps'] = 2
+                if 'brush' not in self.settings['map-editor']:
+                    self.settings['map-editor']['brush'] = 3
+
+                if 'high-scores' not in self.settings:
+                    self.settings['high-scores'] = []
+
+                if 'custom-maps' not in self.settings:
+                    self.settings['custom-maps'] = []
+
         else:
-            self.settings = {
-                'type': 'BassieRacing Settings',
-                'version': Config.VERSION,
-                'account': {
-                    'username': 'Anonymous'
-                },
-                'intro': {
-                    'enabled': True
-                },
-                'music': {
-                    'enabled': True,
-                    'position': 0
-                },
-                'sound-effects': {
-                    'enabled': True
-                },
-                'selected': {
-                    'map-id': None,
-                    'left': {
-                        'vehicle-id': 0,
-                        'vehicle-color': VehicleColor.BLUE
-                    },
-                    'right': {
-                        'vehicle-id': 0,
-                        'vehicle-color': VehicleColor.RED
-                    }
-                },
-                'multiplayer': {
-                    'last-address': ''
-                },
-                'map-editor': {
-                    'last-path': None,
-                    'grid': False,
-                    'size': 1,
-                    'laps': 2,
-                    'brush': 3
-                },
-                'high-scores': [],
-                'custom-maps': []
-            }
+            self.use_default_settings()
 
         # Load fonts
         font_path = 'assets/fonts/PressStart2P-Regular.ttf'
@@ -130,10 +163,53 @@ class Game:
         signal.signal(signal.SIGINT, self.handle_signals)
         signal.signal(signal.SIGTERM, self.handle_signals)
 
+    # Use default settings
+    def use_default_settings(self):
+        self.settings = {
+            'type': 'BassieRacing Settings',
+            'version': Config.VERSION,
+            'account': {
+                'username': 'Anonymous'
+            },
+            'intro': {
+                'enabled': True
+            },
+            'music': {
+                'enabled': True,
+                'position': 0
+            },
+            'sound-effects': {
+                'enabled': True
+            },
+            'selected': {
+                'map-id': None,
+                'left': {
+                    'vehicle-id': 0,
+                    'vehicle-color': VehicleColor.BLUE
+                },
+                'right': {
+                    'vehicle-id': 0,
+                    'vehicle-color': VehicleColor.RED
+                }
+            },
+            'multiplayer': {
+                'last-address': ''
+            },
+            'map-editor': {
+                'last-path': None,
+                'grid': False,
+                'size': 1,
+                'laps': 2,
+                'brush': 3
+            },
+            'high-scores': [],
+            'custom-maps': []
+        }
+
     # Save settings to file
     def save_settings(self):
         self.settings['music']['position'] = round(self.musicStart + pygame.mixer.music.get_pos() / 1000, 3)
-        with open('settings.json', 'w') as file:
+        with open(os.path.expanduser('~/bassieracing-settings.json'), 'w') as file:
             file.write(json.dumps(self.settings, separators=(',', ':')) + '\n')
 
     # Handle signals

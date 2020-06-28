@@ -234,11 +234,11 @@ class DirectConnectPage(Page):
 
     # Create direct conect page widgets
     def create_widgets(self):
-        y = (self.game.height - (72 + 24 + 64 + 24 + 64 + 32 + 64)) // 2
+        y = (self.game.height - (72 + 24 + 48 + 24 + 64 + 32 + 64)) // 2
         self.widgets.append(Label(self.game, 'Direct Connect', 0, y, self.game.width, 72, self.game.titleFont, Color.WHITE))
         y += 72 + 24
-        self.widgets.append(Label(self.game, 'Enter the IP address of the host', 0, y, self.game.width, 64, self.game.textFont, Color.WHITE))
-        y += 64 + 24
+        self.widgets.append(Label(self.game, 'Enter the IP address of the host', 0, y, self.game.width, 48, self.game.textFont, Color.WHITE))
+        y += 48 + 24
         self.widgets.append(TextEdit(self.game, self.game.settings['multiplayer']['last-address'], self.game.width // 6, y, self.game.width // 3 * 2, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, 'IP address...', Color.GRAY, 24, self.ip_address_text_edit_changed))
         y += 64 + 32
         self.widgets.append(Button(self.game, 'Back', self.game.width // 4, y, self.game.width // 4 - 8, 64, self.game.textFont, Color.BLACK, Color.WHITE, self.back_button_clicked))
@@ -693,6 +693,8 @@ class EditorPage(Page):
         if self.game.settings['map-editor']['laps'] == len(Config.MAP_LAPS):
             self.sizeComboBox.set_text('Laps: %d \u25BC' % (self.game.settings['map-editor']['laps']))
         self.widgets.append(self.lapsComboBox)
+
+        # self.mapOptionsButton = Button(s)
 
         self.brushComboBox = ComboBox(self.game, MapEditor.TOOL_LABELS, self.game.settings['map-editor']['brush'], 16 + ((self.game.width - 16 * 4) // 3) * 2 + 16 * 2, self.game.height - 64 - 16, (self.game.width - 16 * 4) // 3, 64, self.game.textFont, Color.BLACK, Color.WHITE, Color.LIGHT_GRAY, self.brush_combo_box_changed)
         self.widgets.append(self.brushComboBox)
